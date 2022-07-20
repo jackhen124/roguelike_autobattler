@@ -1,0 +1,112 @@
+[gd_scene load_steps=10 format=2]
+
+[ext_resource path="res://units/sprites/elephant.png" type="Texture" id=1]
+[ext_resource path="res://units/Unit.gd" type="Script" id=2]
+[ext_resource path="res://units/AttackIndicator.tscn" type="PackedScene" id=3]
+[ext_resource path="res://types/sprites/earthen.png" type="Texture" id=4]
+[ext_resource path="res://units/HealthIndicator.tscn" type="PackedScene" id=5]
+
+[sub_resource type="Gradient" id=1]
+colors = PoolColorArray( 1, 1, 1, 1, 1, 1, 1, 0 )
+
+[sub_resource type="RectangleShape2D" id=2]
+extents = Vector2( 30.359, 31.9626 )
+
+[sub_resource type="StyleBoxFlat" id=3]
+bg_color = Color( 0.45098, 0.941176, 0.701961, 1 )
+
+[sub_resource type="StyleBoxFlat" id=4]
+bg_color = Color( 0.352941, 0.454902, 0.403922, 0.52549 )
+
+[node name="Unit" type="Node2D"]
+script = ExtResource( 2 )
+
+[node name="CombineParticles" type="CPUParticles2D" parent="."]
+emitting = false
+amount = 150
+one_shot = true
+explosiveness = 0.6
+spread = 180.0
+gravity = Vector2( 0, 0 )
+initial_velocity = 250.0
+initial_velocity_random = 0.2
+scale_amount = 10.0
+
+[node name="BuyParticles1" type="CPUParticles2D" parent="."]
+emitting = false
+one_shot = true
+
+[node name="MoveParticles" type="CPUParticles2D" parent="."]
+position = Vector2( 0.840897, -2.31247 )
+amount = 9
+lifetime = 0.3
+local_coords = false
+texture = ExtResource( 1 )
+gravity = Vector2( 0, 0 )
+scale_amount = 0.14
+color_ramp = SubResource( 1 )
+
+[node name="Sprite" type="Sprite" parent="."]
+position = Vector2( -0.0196609, 23.7131 )
+scale = Vector2( 0.142782, 0.142782 )
+texture = ExtResource( 1 )
+offset = Vector2( 5.6584, -185.095 )
+
+[node name="Area2D" type="Area2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D"]
+shape = SubResource( 2 )
+
+[node name="HealthIndicator" parent="." instance=ExtResource( 5 )]
+margin_left = -59.7216
+margin_top = 10.173
+margin_right = -30.7216
+margin_bottom = 38.173
+rect_pivot_offset = Vector2( 14.0888, 14.162 )
+
+[node name="HealthBar2" type="ProgressBar" parent="HealthIndicator"]
+visible = false
+anchor_left = 0.236
+anchor_right = 0.749
+margin_left = -0.841444
+margin_top = -0.172951
+margin_right = 26.2816
+margin_bottom = 15.827
+rect_rotation = -90.0
+custom_styles/fg = SubResource( 3 )
+custom_styles/bg = SubResource( 4 )
+allow_greater = true
+percent_visible = false
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="AttackRect" parent="." instance=ExtResource( 3 )]
+visible = false
+
+[node name="Tween" type="Tween" parent="."]
+
+[node name="Type1" type="TextureRect" parent="."]
+margin_left = -42.0
+margin_top = 25.0
+margin_right = 3.0
+margin_bottom = 70.0
+texture = ExtResource( 4 )
+expand = true
+stretch_mode = 6
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Type2" type="TextureRect" parent="."]
+margin_left = -2.0
+margin_top = 25.0
+margin_right = 43.0
+margin_bottom = 70.0
+texture = ExtResource( 4 )
+expand = true
+stretch_mode = 6
+__meta__ = {
+"_edit_use_anchors_": false
+}
+[connection signal="input_event" from="Area2D" to="." method="_on_Area2D_input_event"]
