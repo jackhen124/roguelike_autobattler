@@ -8,8 +8,11 @@ var playerScene = preload('res://Player.tscn')
 var players = []
 var roundNum = 0
 var battleOffset = 1
+
+export var debug = false
 # Called when the node enters the scene tree for the first time.
 func _ready():
+	Global.game = self
 	$StartMenu.connect('started', self, 'start')
 	start()
 	pass # Replace with function body.
@@ -17,9 +20,10 @@ func _ready():
 func start():
 	$StartMenu.hide()
 	var newPlayer = playerScene.instance()
-	Global.player = newPlayer
-	newPlayer.update()
+	
+	
 	add_child(newPlayer)
+	Global.player = newPlayer
 
 func startOld(var numPlayers):
 	$StartMenu.hide()

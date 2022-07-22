@@ -13,9 +13,10 @@ var alliesDone
 var enemiesDone
 var roundNum = 1
 var player
+var allySpots
 var battleOver = false
 var averageHp = 5
-
+var centerPos = Vector2(0,0)
 onready var enemiesStartPos = $EnemySpots.global_position
 # Called when the node enters the scene tree for the first time.
 func _ready():
@@ -62,6 +63,12 @@ func start():
 		#enemy.allies = enemies
 		#enemy.enemies = allies
 		pass
+	
+	var diff = $AlliesPos.global_position - $EnemiesPos.global_position
+	print($EnemiesPos.name)
+	print($AlliesPos.name)
+	centerPos = $EnemiesPos.global_position.move_toward($AlliesPos.global_position, float($EnemiesPos.global_position.distance_to($AlliesPos.global_position))/2.0)
+	print('battle centerPos ', centerPos)
 	nextAttack()
 	
 
@@ -178,8 +185,8 @@ func generateEnemies(difficulty):
 	print('generating (',numberOfEnemies,') enemies with difficulty: ', difficulty)
 	print('level range from ',levelMin, ' to ', levelMax)
 	for i in range(numberOfEnemies):
-		#var randUnitIndex = Global.rng.randi_range(0, Global.unitLibrary.size()-1)
-		var randUnitIndex = 3
+		var randUnitIndex = Global.randomUnitBasedOn(difficulty)
+		#var randUnitIndex = 3
 		
 		var levelRand = Global.rng.randf_range(levelMin, levelMax)
 		var level

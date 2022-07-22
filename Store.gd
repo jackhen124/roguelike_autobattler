@@ -14,8 +14,9 @@ func _ready():
 func refresh(level = 1):
 	for spot in $Selection.get_children():
 		var unit = load('res://units/Unit.tscn').instance()
-		var rand = Global.rng.randi_range(0, Global.unitLibrary.size()-1)
-		unit.render(rand)
+		#var rand = Global.rng.randi_range(0, Global.unitLibrary.size()-1)
+		var randomUnit = Global.randomUnitBasedOn(Global.player.stageNum)
+		unit.render(randomUnit)
 		spot.empty(true)
 		spot.render('store')
 		spot.player = get_parent().get_parent()

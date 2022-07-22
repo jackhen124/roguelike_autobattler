@@ -24,8 +24,7 @@ func render(_type):
 
 func setup():
 	if type == 'battle':
-		$Button.modulate = Color(0.8,0.8,1, 0.2)
-		button.hide()
+	
 		if unit!= null:
 			unit.get_node('Type1').hide()
 			unit.get_node('Type2').hide()
@@ -37,6 +36,8 @@ func setup():
 	if type == 'store':
 		
 		$Button.modulate = Color(1,1,0.8)
+	else:
+		$CoinLabel.hide()
 	if type == 'bench':
 		$Button.modulate = Color(0.9, 1, 0.8).darkened(0.3)
 		
@@ -47,15 +48,21 @@ func setup():
 
 func fill(_unit):
 	#print('filling ', type, ' spot with unit: ', _unit.id)
-	
+	if type == 'store':
+		modulate.a = 1
 	if is_instance_valid(_unit.get_parent()):
 		_unit.get_parent().empty()
 	unit = _unit
 	add_child(unit)
 	unit.global_position = $Pos.global_position
+	if type == 'store':
+		$CoinLabel.setCoins(Global.unitLibrary[unit.id]['tier'])
 	setup()
 	
 func empty(freeUnit = false):
+	#$CoinLabel.hide()
+	if type == 'store':
+		modulate.a = 0.3
 	if unit!= null:
 		remove_child(unit)
 		if freeUnit:

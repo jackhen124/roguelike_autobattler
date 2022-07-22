@@ -1,4 +1,4 @@
-extends ColorRect
+extends Node2D
 
 
 # Declare member variables here. Examples:
@@ -11,7 +11,7 @@ func _ready():
 	pass # Replace with function body.
 
 
-func set(hp, maxHp, showMax = false):
+func setHp(hp, maxHp, showMax = false):
 	var hpPercent = float(hp-1)/float(maxHp-1)
 	var r = 0
 	var g 
@@ -21,7 +21,7 @@ func set(hp, maxHp, showMax = false):
 	b = max(hpPercent-0.5,0)
 	#print('Hp percent: ',hpPercent)
 	
-	$HpLabel.add_color_override('font_color',Color(r,g,b,1).lightened(0.6) )
+	#$HpLabel.add_color_override('font_color',Color(r,g,b,1).lightened(0.6) )
 	var darkness = 0.2
 	#print('r ', darkness*r)
 	#print('g ', darkness*g)
@@ -29,7 +29,7 @@ func set(hp, maxHp, showMax = false):
 	var bgColor = Color(r,g,b,1)
 	#bgColor = CustomFormulas.changeSaturation(bgColor, -0.5)
 	#$HealthRect.set_frame_color(bgColor)
-	self_modulate = bgColor
+	$BgSprite.modulate = bgColor
 	
 	$HpLabel.text = str(hp)
 	if showMax:
@@ -44,8 +44,8 @@ func set(hp, maxHp, showMax = false):
 func setupHealthBar(maxHp):
 	var hb = $HealthBar
 	var stdHp = 5
-	if is_instance_valid(Global.player.battle):
-		stdHp = Global.player.battle.averageHp
+	#if is_instance_valid(Global.player.battle):
+		#stdHp = Global.player.battle.averageHp
 	$HealthBar.max_value = maxHp
 	$HealthBar.value = maxHp
 	var hpScale = float(maxHp)/float(stdHp)
@@ -53,4 +53,4 @@ func setupHealthBar(maxHp):
 		
 		#hb.rect_scale.x = hpScale
 	#else:
-	hb.rect_scale.y = hpScale
+	#hb.rect_scale.y = hpScale

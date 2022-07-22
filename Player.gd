@@ -4,11 +4,11 @@ extends Control
 # Declare member variables here. Examples:
 # var a = 2
 # var b = "text"
-
+signal needUpdate
 var holding = null
 var isUser = false
 var hp = 20
-var coins = 100
+var coins = 2
 var game
 onready var cam = $Camera2D
 onready var tween = $Tween
@@ -19,15 +19,19 @@ onready var store = $GUI/Store
 onready var benchSpots = $LeaveScreen/BenchSpots
 onready var lineupSpots = $LineupSpots
 onready var infoPanel = $GUI/InfoPanel
+var coinLabel
 var offscreenDis = 700
 
-var rerollCost = 2
+var rerollCost = 0
 var stageNum = 1
 var lineupVertical = false
 onready var lineupStartPos = $LineupSpots.global_position
 # Called when the node enters the scene tree for the first time.
 func _ready():
-	store.refresh()
+	if Global.game.debug:
+		coins = 100
+	coinLabel = $LeaveScreen/CoinLabel
+	call_deferred('afterReady')
 	
 	for spot in lineupSpots.get_children():
 		spot.player = self
@@ -38,9 +42,11 @@ func _ready():
 		spot.render('bench')
 		
 		
-	update()
+	updateInfo()
 	pass # Replace with function body.
 
+func afterReady():
+	store.refresh()
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta):
@@ -49,9 +55,9 @@ func _process(delta):
 	if lineupVertical:
 		if $LineupSpots.percentVertical < 1:
 			
-			$LineupSpots.percentVertical = min($LineupSpots.percentVertical + delta*0.7, 100)
+			$LineupSpots.percentVertical = min($LineupSpots.percentVertical + delta*0.55, 100)
 			
-			$LineupSpots.update()
+			$LineupSpots.updatePositions()
 			if is_instance_valid(battle):
 				battle.get_node('EnemySpots').percentVertical = $LineupSpots.percentVertical
 				
@@ -59,13 +65,15 @@ func _process(delta):
 				$LineupSpots.global_position.x = CustomFormulas.proportion(lineupStartPos.x, battle.get_node('AlliesPos').global_position.x, $LineupSpots.percentVertical)
 				battle.get_node('EnemySpots').global_position.y = CustomFormulas.proportion(battle.enemiesStartPos.y, battle.get_node('EnemiesPos').global_position.y, $LineupSpots.percentVertical)
 				battle.get_node('EnemySpots').global_position.x = CustomFormulas.proportion(battle.enemiesStartPos.x, battle.get_node('EnemiesPos').global_position.x, $LineupSpots.percentVertical)
-			battle.get_node('EnemySpots').update()
+			battle.get_node('EnemySpots').updatePositions()
+			
 			
 			
 	else:
 		if $LineupSpots.percentVertical > 0:
+			battle.modulate.a = $LineupSpots.percentVertical
 			$LineupSpots.percentVertical = max($LineupSpots.percentVertical - delta*0.7, 0)
-			$LineupSpots.update()
+			$LineupSpots.updatePositions()
 			$LineupSpots.global_position.y = CustomFormulas.proportion(lineupStartPos.y, battle.get_node('AlliesPos').global_position.y, $LineupSpots.percentVertical)
 			$LineupSpots.global_position.x = CustomFormulas.proportion(lineupStartPos.x, battle.get_node('AlliesPos').global_position.x, $LineupSpots.percentVertical)
 			#battle.get_node('Enemyspots').percentVertical = $LineupSpots.percentVertical
@@ -89,6 +97,7 @@ func afterBattle():
 	
 	$GUI/ReadyButton.show()
 	store.refresh()
+	coins+=1+stageNum
 	
 	
 func nextBattle():
@@ -135,9 +144,12 @@ func addSpot(group, type):
 	return newSpot
 	
 
-func update():
-	
-	$GUI/CoinsLabel.text = ' x '+str(coins)
+func updateInfo():
+	emit_signal('needUpdate')
+	$GUI/RerollButton/CoinLabel.setCoins(rerollCost)
+	if rerollCost == 0:
+		$GUI/RerollButton/CoinLabel.setCoins('Free')
+	coinLabel.setCoins(coins)
 	
 func canMerge(checkUnit):
 	var numOthers = 0
@@ -176,13 +188,17 @@ func getOwnedUnits():
 	return units
 	
 func buyUnit(unit):
-	if Global.unitCost <= coins:
+	if Global.unitLibrary[unit.id].tier <= coins:
+		Global.playAudio('coin')
 		print_debug('buying unit')
-		coins-= Global.unitCost
+		coins-= Global.unitLibrary[unit.id].tier
 		unit.player = self
 		if canMerge(unit):
 			merge(unit)
 		getFirstEmptySpot().fill(unit)
+		
+		if rerollCost == 0:
+			rerollCost +=1
 		update()
 
 func getFirstEmptySpot():
@@ -208,5 +224,7 @@ func _on_RerollButton_pressed():
 	if coins > rerollCost:
 		store.refresh()
 		coins -= rerollCost
+		if rerollCost < 2:
+			rerollCost+=1
 		update()
 	pass # Replace with function body.

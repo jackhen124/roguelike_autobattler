@@ -20,6 +20,7 @@ var types = []
 var hasAttacked = false
 var battle
 var curTarget = null
+var attackFromPos = null
 
 onready var tween = $Tween
 onready var hpLabel = $HealthRect/HpLabel
@@ -28,6 +29,11 @@ onready var attackLabel = $AttackRect/AttackLabel
 var scalingUp = true
 var baseScale
 var animSpeedRand
+ 
+enum battleStates {idle, preAttackMove, preAttackStop, attack, postAttack}
+var battleState = battleStates.idle
+
+var preAttackStopTimer = 0
 # Called when the node enters the scene tree for the first time.
 func _ready():
 	$MoveParticles.emitting = false
@@ -51,11 +57,44 @@ func _process(delta):
 		$Sprite.scale.y *= 1 - delta*(yRate* animSpeedRand)
 		if $Sprite.scale.y <= baseScale.y*(1-maxDiff):
 			scalingUp = true
+			
+	
+	var attackFromDisFromTarget = 100
+	var moveSpeed = 250
+	var bonusSpeed
+	if is_instance_valid(curTarget):
+		attackFromPos = Vector2(move_toward(curTarget.global_position.x,battle.centerPos.x, 80), curTarget.global_position.y)
+		
+	else:
+		attackFromPos = null
+	if battleState == battleStates.preAttackMove:
+		bonusSpeed = global_position.distance_to(curTarget.global_position)*0.6
+		global_position = global_position.move_toward(attackFromPos, delta*(moveSpeed+bonusSpeed))
+		if global_position == attackFromPos:
+			battleState = battleStates.preAttackStop
+			preAttackStopTimer = 0
+	if battleState == battleStates.preAttackStop:
+		preAttackStopTimer+=delta
+		if preAttackStopTimer >= 0.25:
+			battleState = battleStates.attack
+	if battleState == battleStates.attack:
+		global_position = global_position.move_toward(curTarget.global_position, delta*moveSpeed)
+		if global_position.distance_to(curTarget.global_position) < attackFromDisFromTarget/2:
+			attackAction()
+			battleState = battleStates.postAttack
+			curTarget = null
+	if battleState == battleStates.postAttack:
+		global_position = global_position.move_toward(get_parent().global_position, delta*moveSpeed*2)
+		if global_position == get_parent().global_position:
+			battleState = battleStates.idle
+			attackDone()
+		
+	update()
 	pass
 func render(_id, _level = 1):
 	var data = Global.unitLibrary[_id]
 	hp = data.hp
-	unitName = data.name
+	unitName = _id
 	types = data.types
 	maxHp = hp
 	attack = data.attack
@@ -64,8 +103,8 @@ func render(_id, _level = 1):
 	
 	$Sprite.texture = load(str('res://units/sprites/',unitName, '.png'))
 	$MoveParticles.texture = $Sprite.texture
-	$MoveParticles.scale = $Sprite.scale
-	#$Sprite.scale = Vector2(0.25,0.25)
+	#$MoveParticles.scale = $Sprite.scale
+	
 	z_as_relative = false
 	z_index +=1
 	
@@ -74,8 +113,11 @@ func render(_id, _level = 1):
 	while (_level > 1):
 		levelUp(false)
 		_level -= 1
-	update()
+	updateInfo()
 	
+func _draw():
+	if attackFromPos != null:
+		draw_line(Vector2(0,0), attackFromPos - global_position, Color(1,0.5,0.5), 3)
 
 func levelUp(emitParticles = false):
 	level+=1
@@ -87,20 +129,21 @@ func levelUp(emitParticles = false):
 	$Sprite.scale *= 1.5
 	$MoveParticles.scale = $Sprite.scale
 	baseScale = $Sprite.scale
-	update()
+	updateInfo()
 	
 	
-func update():
+func updateInfo():
 	$AttackRect/AttackLabel.text = str(attack)
 	$HealthIndicator/HpLabel.text = str(hp)
 	
 	
-	$HealthIndicator.set(hp, maxHp)
+	$HealthIndicator.setHp(hp, maxHp)
 	
 
 
 func setEnemy():
 	scale.x *=-1
+	$MoveParticles.scale.x =1
 	$HealthIndicator.set_scale(Vector2($HealthIndicator.get_scale().x*-1, 1))
 	#$AttackRect.set_scale(Vector2($AttackRect.get_scale().x*-1,1))
 	
@@ -115,17 +158,15 @@ func attack(enemyArray):
 	print(unitName, ' attacking enemy')
 	curTarget = randomTarget(enemyArray)
 	$MoveParticles.emitting = true
-	tweenToAnd(curTarget.global_position, 'attackAction')
+	battleState = battleStates.preAttackMove
 	
 func attackAction():
 	$MoveParticles.emitting = false
 	curTarget.takeDamage(attack)
-	returnToSpot()
+	
 	pass
 	
-func returnToSpot():
-	tweenToAnd(get_parent().get_node('Pos').global_position, 'attackDone')
-	
+
 	
 func attackDone():
 	battle.nextAttack()
@@ -134,7 +175,7 @@ func takeDamage(amount):
 	hp-= amount
 	if hp <= 0:
 		die()
-	update()
+	updateInfo()
 		
 func die():
 	

@@ -1,0 +1,31 @@
+[gd_scene load_steps=3 format=2]
+
+[ext_resource path="res://types/sprites/aquatic.png" type="Texture" id=1]
+[ext_resource path="res://UI/ElementIndicator.gd" type="Script" id=2]
+
+[node name="ElementIndicator" type="Control"]
+anchor_left = 0.470703
+anchor_top = 0.447917
+anchor_right = 0.529297
+anchor_bottom = 0.552083
+rect_min_size = Vector2( 60, 60 )
+mouse_filter = 2
+script = ExtResource( 2 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="TextureButton" type="Button" parent="."]
+modulate = Color( 1, 1, 1, 0 )
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="TextureRect" type="TextureRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+texture = ExtResource( 1 )
+expand = true
+
+[connection signal="mouse_entered" from="TextureButton" to="." method="_on_TextureButton_mouse_entered"]
+[connection signal="mouse_exited" from="TextureButton" to="." method="_on_TextureButton_mouse_exited"]

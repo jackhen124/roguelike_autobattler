@@ -1,65 +1,57 @@
-[gd_scene load_steps=6 format=2]
+[gd_scene load_steps=7 format=2]
 
 [ext_resource path="res://resources/fonts/FjallaOne-Regular.ttf" type="DynamicFontData" id=1]
+[ext_resource path="res://UI/resources/heart.png" type="Texture" id=2]
 [ext_resource path="res://UI/HealthIndicator.gd" type="Script" id=3]
 
-[sub_resource type="DynamicFont" id=1]
-size = 24
-outline_size = 1
+[sub_resource type="StyleBoxFlat" id=1]
+bg_color = Color( 0.45098, 0.941176, 0.701961, 1 )
+
+[sub_resource type="StyleBoxFlat" id=2]
+bg_color = Color( 0.352941, 0.454902, 0.403922, 0.52549 )
+
+[sub_resource type="DynamicFont" id=3]
+size = 17
 outline_color = Color( 0, 0, 0, 1 )
 font_data = ExtResource( 1 )
 
-[sub_resource type="StyleBoxFlat" id=2]
-bg_color = Color( 0.45098, 0.941176, 0.701961, 1 )
-
-[sub_resource type="StyleBoxFlat" id=3]
-bg_color = Color( 0.352941, 0.454902, 0.403922, 0.52549 )
-
-[node name="HealthIndicator" type="ColorRect"]
-anchor_left = -0.031
-anchor_top = 0.005
-anchor_right = -0.031
-anchor_bottom = 0.005
-margin_left = -15.32
-margin_top = -14.6
-margin_right = 13.68
-margin_bottom = 14.4
-rect_pivot_offset = Vector2( 15.3776, 14.6489 )
-mouse_filter = 2
+[node name="HealthIndicator" type="Node2D"]
 script = ExtResource( 3 )
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="HpLabel" type="Label" parent="."]
-margin_left = 0.0745621
-margin_top = -1.0
-margin_right = 29.0746
-margin_bottom = 30.0
-custom_fonts/font = SubResource( 1 )
-custom_colors/font_color = Color( 1, 1, 1, 1 )
-text = "12"
-align = 1
-valign = 1
-__meta__ = {
-"_edit_use_anchors_": false
-}
 
 [node name="HealthBar" type="ProgressBar" parent="."]
 anchor_left = 0.509
 anchor_top = 0.5
 anchor_right = 0.509
 anchor_bottom = 0.5
-margin_left = -7.996
-margin_top = -14.319
-margin_right = 34.004
-margin_bottom = 1.681
+margin_left = -6.94488
+margin_top = -8.64295
+margin_right = 35.0551
+margin_bottom = 7.35705
 rect_rotation = -90.0
 mouse_filter = 2
-custom_styles/fg = SubResource( 2 )
-custom_styles/bg = SubResource( 3 )
+custom_styles/fg = SubResource( 1 )
+custom_styles/bg = SubResource( 2 )
 allow_greater = true
 percent_visible = false
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="BgSprite" type="Sprite" parent="."]
+position = Vector2( 0.423317, -9.75558 )
+scale = Vector2( 0.295083, 0.295083 )
+texture = ExtResource( 2 )
+
+[node name="HpLabel" type="Label" parent="."]
+margin_left = -14.2226
+margin_top = -12.9278
+margin_right = 14.7775
+margin_bottom = 18.0722
+custom_fonts/font = SubResource( 3 )
+custom_colors/font_color = Color( 1, 1, 1, 1 )
+text = "12"
+align = 1
+valign = 1
 __meta__ = {
 "_edit_use_anchors_": false
 }
