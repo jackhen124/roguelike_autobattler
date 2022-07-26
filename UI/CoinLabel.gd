@@ -24,8 +24,9 @@ func _ready():
 	pass # Replace with function body.
 
 func connectUpdate():
-	Global.player.connect('needUpdate', self, 'update')
-	update()
+	if is_instance_valid(Global.player):
+		Global.player.connect('needUpdate', self, 'update')
+		update()
 
 func setCoins(numCoins):
 	$Label.text = str(numCoins)

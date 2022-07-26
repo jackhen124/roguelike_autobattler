@@ -38,14 +38,14 @@ const keywords = {
 		'desc': "round-end: heal 1 per regenration",
 		'color':'#27e496'
 	},
-	'chill':{
+	'slow':{
 		'type':'debuff',
-		'desc': "If a unit recieves enough stacks of chill, they become frozen. The amount of stacks needed for the first freeze is equal to the unit's merge rank",
+		'desc': "If a unit recieves enough stacks of slow, they are stunned. The amount of stacks needed to stun an enemy increases every time they are stunned",
 		'color':'#c2f2ff'
 	},
-	'frozen':{
+	'stun':{
 		'type':'debuff',
-		'desc': "Frozen units unfreeze instead of attacking. Freezing again will take an extra stack of chill",
+		'desc': "Stunned units miss their next attack. Getting stunned again will take an extra stack of slow",
 		'color':'#29d0ff'
 	},
 	'on-attack':{
@@ -232,6 +232,15 @@ func randomUnitBasedOn(stage):
 	
 	return possibleUnits[rand]
 	
+func instanceUnit(unitName):
+	var unit = load('res://units/Unit.tscn').instance()
+	var file2Check = File.new()
+	var scriptName = str('res://units/scripts/', unitName, '.gd')
+	var doesScriptExist = file2Check.file_exists(scriptName)
+	if doesScriptExist:
+		unit.set_script( load(scriptName ))
+	unit.render(unitName)
+	return unit
 	
 func getPossibleUnitsBasedOnStage(stage):
 	#print('GETTING UNIT BASED ON STAGE: ',stage)

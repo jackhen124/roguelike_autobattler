@@ -51,7 +51,7 @@ func generateDesc(string):
 	
  
 func generateKeywordText(keyword, suffix = ''):
-	print('generating keyword text ', keyword)
+	#print('generating keyword text ', keyword)
 	var before = []
 	var after = []
 	#before.append('color=red')
@@ -86,14 +86,13 @@ func generateKeywordText(keyword, suffix = ''):
 		
 		result += str('[/',after[after.size()-1-i],']')
 	
-	print(result)
 	
 	return result
 	#return str('[',modifier,']',keyword, '[/',modifier,']')
 
 func elementString(string):
 	var result = ''
-	var unitsNeeded = Global.elementLibrary[elementName]['unitsNeeded']
+	var unitsNeeded = Global.elementLibrary[elementName][string]
 		
 	for i in unitsNeeded.size():
 		result += str(unitsNeeded[i])

@@ -26,10 +26,13 @@ var rerollCost = 0
 var stageNum = 1
 var lineupVertical = false
 onready var lineupStartPos = $LineupSpots.global_position
+
+
 # Called when the node enters the scene tree for the first time.
 func _ready():
 	if Global.game.debug:
 		coins = 100
+		addUnit('skunk')
 	coinLabel = $LeaveScreen/CoinLabel
 	call_deferred('afterReady')
 	
@@ -149,6 +152,7 @@ func updateInfo():
 	$GUI/RerollButton/CoinLabel.setCoins(rerollCost)
 	if rerollCost == 0:
 		$GUI/RerollButton/CoinLabel.setCoins('Free')
+	print(coins)
 	coinLabel.setCoins(coins)
 	
 func canMerge(checkUnit):
@@ -199,7 +203,13 @@ func buyUnit(unit):
 		
 		if rerollCost == 0:
 			rerollCost +=1
-		update()
+		updateInfo()
+
+func addUnit(unitName):
+	var unit = Global.instanceUnit(unitName)
+	if canMerge(unit):
+		merge(unit)
+	getFirstEmptySpot().fill(unit)
 
 func getFirstEmptySpot():
 	for spot in lineupSpots.get_children():
@@ -226,5 +236,5 @@ func _on_RerollButton_pressed():
 		coins -= rerollCost
 		if rerollCost < 2:
 			rerollCost+=1
-		update()
+		updateInfo()
 	pass # Replace with function body.

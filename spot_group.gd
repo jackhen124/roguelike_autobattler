@@ -51,6 +51,7 @@ func updatePositions():
 		i+=1
 
 func _draw():
-	draw_circle(Vector2(0,0), 60, Color(1,1,1, 0.1))
-	draw_line(minPos, maxPos, Color(1,1,1), 2)
+	#draw_circle(Vector2(0,0), 60, Color(1,1,1, 0.1))
 	#draw_line(minPos, maxPos, Color(1,1,1), 2)
+	#draw_line(minPos, maxPos, Color(1,1,1), 2)
+	pass

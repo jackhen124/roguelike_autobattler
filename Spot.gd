@@ -105,5 +105,6 @@ func _on_Button_pressed():
 
 
 func _on_Button_mouse_entered():
-	Global.player.spotHover(self)
+	if is_instance_valid(Global.player):
+		Global.player.spotHover(self)
 	pass # Replace with function body.

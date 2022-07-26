@@ -58,6 +58,9 @@ func changeSaturation(color, satValue):
 		result = color
 		print('increase saturation not implemented! use negative saturation value')
 	return result
+	
+func randomValue(value, diffRange):
+	return Global.rng.randf_range(value*(1-diffRange), value*(1+diffRange))
 
 
 func redToGreen(value):

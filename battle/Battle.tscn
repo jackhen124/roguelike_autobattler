@@ -1,9 +1,15 @@
-[gd_scene load_steps=3 format=2]
+[gd_scene load_steps=8 format=2]
 
 [ext_resource path="res://battle/Battle.gd" type="Script" id=1]
 [ext_resource path="res://spot_group.gd" type="Script" id=2]
+[ext_resource path="res://battle/Cloud.tscn" type="PackedScene" id=3]
+[ext_resource path="res://battle/Clouds.gd" type="Script" id=4]
+[ext_resource path="res://resources/backgrounds/sky.png" type="Texture" id=5]
+[ext_resource path="res://resources/backgrounds/grassy_ground.png" type="Texture" id=6]
+[ext_resource path="res://resources/backgrounds/grassy_hills.png" type="Texture" id=7]
 
 [node name="Battle" type="Node2D"]
+position = Vector2( -1, -2 )
 script = ExtResource( 1 )
 
 [node name="EnemiesPos" type="Position2D" parent="."]
@@ -18,3 +24,35 @@ position = Vector2( 517, 353 )
 position = Vector2( 636, 136 )
 script = ExtResource( 2 )
 disToCover = 700
+
+[node name="TestAllySpots" type="Node2D" parent="."]
+position = Vector2( 640, 592 )
+script = ExtResource( 2 )
+disToCover = 700
+
+[node name="Sky" type="Sprite" parent="."]
+position = Vector2( 641, 56 )
+z_index = -999
+texture = ExtResource( 5 )
+
+[node name="Clouds" type="Node2D" parent="."]
+position = Vector2( -162, 48 )
+z_index = -100
+script = ExtResource( 4 )
+
+[node name="Cloud" parent="Clouds" instance=ExtResource( 3 )]
+z_index = -100
+
+[node name="CloudCanvas" type="CanvasLayer" parent="."]
+
+[node name="Hills" type="Sprite" parent="."]
+position = Vector2( 642, 157 )
+texture = ExtResource( 7 )
+
+[node name="Ground" type="Sprite" parent="."]
+position = Vector2( 641, 363 )
+texture = ExtResource( 6 )
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2( 633, 355 )
+zoom = Vector2( 1.2, 1.2 )

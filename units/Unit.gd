@@ -1,5 +1,5 @@
 extends Node2D
-
+class_name Unit
 
 # Declare member variables here. Examples:
 # var a = 2
@@ -18,6 +18,7 @@ var unitName
 var maxHp
 var types = []
 var hasAttacked = false
+var hasDoneRoundEnd = false
 var battle
 var curTarget = null
 var attackFromPos = null
@@ -26,14 +27,25 @@ onready var tween = $Tween
 onready var hpLabel = $HealthRect/HpLabel
 onready var attackLabel = $AttackRect/AttackLabel
 
+var actionQueue = []
+
 var scalingUp = true
 var baseScale
 var animSpeedRand
  
-enum battleStates {idle, preAttackMove, preAttackStop, attack, postAttack}
+enum battleStates {idle, preAttackMove, preAttackStop, attack, postAttack, waiting, roundEnd}
 var battleState = battleStates.idle
 
 var preAttackStopTimer = 0
+
+var hasOnAttack = false
+var nextState = null
+
+var waitTime = 0
+var afterWaitMethod = ''
+var afterWaitArgs = []
+
+var statuses = {}
 # Called when the node enters the scene tree for the first time.
 func _ready():
 	$MoveParticles.emitting = false
@@ -67,30 +79,51 @@ func _process(delta):
 		
 	else:
 		attackFromPos = null
-	if battleState == battleStates.preAttackMove:
-		bonusSpeed = global_position.distance_to(curTarget.global_position)*0.6
-		global_position = global_position.move_toward(attackFromPos, delta*(moveSpeed+bonusSpeed))
-		if global_position == attackFromPos:
-			battleState = battleStates.preAttackStop
-			preAttackStopTimer = 0
-	if battleState == battleStates.preAttackStop:
-		preAttackStopTimer+=delta
-		if preAttackStopTimer >= 0.25:
-			battleState = battleStates.attack
-	if battleState == battleStates.attack:
-		global_position = global_position.move_toward(curTarget.global_position, delta*moveSpeed)
-		if global_position.distance_to(curTarget.global_position) < attackFromDisFromTarget/2:
-			attackAction()
-			battleState = battleStates.postAttack
-			curTarget = null
-	if battleState == battleStates.postAttack:
-		global_position = global_position.move_toward(get_parent().global_position, delta*moveSpeed*2)
-		if global_position == get_parent().global_position:
-			battleState = battleStates.idle
-			attackDone()
+	if battleState == battleStates.waiting:
+		waitTime -= delta
+		if waitTime <= 0: 
+			battleState = nextState
+			waitTime = 0
+			if afterWaitMethod!= '':
+				#print(id+' calling afterWaitMethod: '+afterWaitMethod + str(afterWaitArgs))
+				callv(afterWaitMethod, afterWaitArgs)
+				afterWaitMethod = ''
+				afterWaitArgs = []
+	else:
+		if battleState == battleStates.preAttackMove:
+			bonusSpeed = global_position.distance_to(curTarget.global_position)*0.6
+			global_position = global_position.move_toward(attackFromPos, delta*(moveSpeed+bonusSpeed))
+			if global_position == attackFromPos:
+				battleState = battleStates.preAttackStop
+				preAttackStopTimer = 0
+		if battleState == battleStates.preAttackStop:
+			preAttackStopTimer+=delta
+			if preAttackStopTimer >= 0.25:
+				if hasOnAttack:
+					waitAnd(0.5, 'changeBattleState', [battleStates.attack])
+					onAttack()
+				else:
+					
+					battleState = battleStates.attack
+		if battleState == battleStates.attack:
+			global_position = global_position.move_toward(curTarget.global_position, delta*moveSpeed)
+			if global_position.distance_to(curTarget.global_position) < attackFromDisFromTarget/2:
+				attackAction()
+				battleState = battleStates.postAttack
+				curTarget = null
+		if battleState == battleStates.postAttack:
+			global_position = global_position.move_toward(get_parent().global_position, delta*moveSpeed*2)
+			if global_position == get_parent().global_position:
+				battleState = battleStates.idle
+				turnDone()
 		
 	update()
 	pass
+	
+func changeBattleState(newState):
+	battleState = newState
+	
+	
 func render(_id, _level = 1):
 	var data = Global.unitLibrary[_id]
 	hp = data.hp
@@ -147,7 +180,13 @@ func setEnemy():
 	$HealthIndicator.set_scale(Vector2($HealthIndicator.get_scale().x*-1, 1))
 	#$AttackRect.set_scale(Vector2($AttackRect.get_scale().x*-1,1))
 	
-
+func waitAnd(time, afterMethod, args = []):
+	
+	waitTime = time
+	battleState = battleStates.waiting
+	afterWaitMethod = afterMethod
+	afterWaitArgs = args
+	
 	
 func randomTarget(enemyArray):
 	var rand = Global.rng.randi_range(0,enemyArray.size()-1)
@@ -165,11 +204,17 @@ func attackAction():
 	curTarget.takeDamage(attack)
 	
 	pass
+
+func turnDone():
 	
+	if battle.waitingOnUnit:
+		print(id, ' turn done, next action!!!')
+		battle.nextAction()
+	else: 
+		print(id, ' tried to call next action battle is not waiting!!!')
+
 
 	
-func attackDone():
-	battle.nextAttack()
 	
 func takeDamage(amount):
 	hp-= amount
@@ -187,12 +232,55 @@ func die():
 	else:
 		queue_free()
 	
-func tweenToAnd(pos, afterMethod = ''):
-	tween.interpolate_property(self, "global_position",
-		global_position, pos, 1,
-		Tween.TRANS_LINEAR, Tween.EASE_IN_OUT)
-	tween.start()
-	if afterMethod != '':
-		tween.connect("tween_all_completed", self, afterMethod, [], CONNECT_ONESHOT)
+func onAttack():
 	
+	pass
 	
+func roundEnd():
+	if statuses.has('poison'):
+		actionQueue.append('poison')
+		
+		
+	executeRoundEndActionQueue()
+	
+func executeRoundEndActionQueue():
+	if actionQueue.size() == 0:
+		print(id+' no actions in queue')
+		turnDone()
+	else:
+		print(str(id,' executing action queue: ',actionQueue))
+		var actionWait = 0.5
+		if actionQueue[0] == 'poison':
+			takeDamage(statuses['poison'])
+			statuses['poison'] -= 1
+			if statuses['poison'] <= 0:
+				statuses.erase('poison')
+			updatePoisonParticles()
+		actionQueue.remove(0)
+		
+		waitAnd(actionWait, 'executeRoundEndActionQueue')
+	pass
+	
+func applyEffect(effectName, amount, target):
+	target.recieveEffect(effectName, amount)
+	pass
+
+func recieveEffect(effectName, amount):
+	if statuses.has(effectName):
+		statuses[effectName] += amount
+	else:
+		statuses[effectName] = amount
+	if effectName == 'poison':
+		updatePoisonParticles()
+		
+	pass
+	
+func updatePoisonParticles():
+	if statuses.has('poison'):
+		var poisonProp = float(statuses['poison']) / maxHp
+		$PersistantPoisonParticles.amount = CustomFormulas.proportion(1, 5, poisonProp)
+		$PoisonParticles.amount = CustomFormulas.proportion(10, 40, poisonProp)
+		$PersistantPoisonParticles.emitting = true
+		$PoisonParticles.emitting = true
+	else:
+		$PersistantPoisonParticles.emitting = false
