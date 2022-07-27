@@ -4,6 +4,7 @@ extends Node
 # Declare member variables here. Examples:
 # var a = 2
 # var b = "text"
+signal avgStatsChanged
 var rng = RandomNumberGenerator.new()
 var spotScene = preload("res://Spot.tscn")
 var unitScene = preload("res://units/Unit.tscn")
@@ -12,6 +13,9 @@ var game
 
 var tieredLibrary = []
 var maxTier = 4
+
+var avgStats = {'power':0, 'hp': 0}
+var onScreenUnits = []
 const keywords = {
 	'heal':{
 		'type': 'buff',
@@ -98,7 +102,7 @@ const elementLibrary = {
 		'color':'#cf6eff'
 	},
 	'lunar':{
-		'desc':'if you have unitsNeeded unique lunar units, all allies gain effectPerStack attack at the end of each round',
+		'desc':'if you have unitsNeeded unique lunar units, all allies gain effectPerStack power at the end of each round',
 		'unitsNeeded': [2,4,6],
 		'effectPerStack':[2,4,6],
 		'color':'#000000'
@@ -116,7 +120,7 @@ const unitLibrary = {
 		'skunk':{
 		
 		'tier':1,
-		'attack':3,
+		'power':3,
 		'hp': 7,
 		'types':['toxic','floral'],
 		'desc':'on-attack: apply 1 poison to target. on-guard apply 1 poison to attacker'
@@ -125,7 +129,7 @@ const unitLibrary = {
 		'skorpion':{
 		
 		'tier':1,
-		'attack':2,
+		'power':2,
 		'hp': 8,
 		'types':['toxic', 'earthen'],
 		'desc':"on-guard: apply poison equal to 1 third of attacker's power"
@@ -135,7 +139,7 @@ const unitLibrary = {
 		'snail':{
 		
 		'tier':1,
-		'attack':2,
+		'power':2,
 		'hp': 8,
 		'types':['earthen', 'aquatic'],
 		'desc':"armor:1"
@@ -145,7 +149,7 @@ const unitLibrary = {
 		'eagle':{
 		
 		'tier':2,
-		'attack':5,
+		'power':5,
 		'hp': 9,
 		'types':['solar','lunar'],
 		'desc':'round-end: lose [1,2,4] power. if my attack would be less than 1, lose health instead'
@@ -153,7 +157,7 @@ const unitLibrary = {
 		'octopus':{
 		
 		'tier':2,
-		'attack':2,
+		'power':2,
 		'hp': 7,
 		'types':['aquatic', 'lunar'],
 		'desc':'round-end: deal damage equal to my power to [1/2/4] random enemies'
@@ -161,7 +165,7 @@ const unitLibrary = {
 		'snake':{
 		
 		'tier':2,
-		'attack':3,
+		'power':3,
 		'hp': 8,
 		'types':['solar', 'toxic'],
 		'desc':''
@@ -169,14 +173,14 @@ const unitLibrary = {
 	##################### Tier 3 ###########################
 		'crocodile':{
 		'tier':3,
-		'attack':4,
+		'power':4,
 		'hp': 11,
 		'types':['aquatic','solar'],
 		'desc':"triumph: gain +[1,2,3] power and heal equal to (target's max HP * [0.5, 1, 1.5]' "
 		},
 		'tiger':{
 		'tier':3,
-		'attack':5,
+		'power':5,
 		'hp': 14,
 		'types':['floral','lunar'],
 		'desc':""
@@ -185,7 +189,7 @@ const unitLibrary = {
 		'elephant':{
 		
 		'tier': 4,
-		'attack':5,
+		'power':5,
 		'hp': 12,
 		'types':['earthen','solar'],
 		'desc':''
@@ -193,7 +197,7 @@ const unitLibrary = {
 		'polarbear':{
 		
 		'tier': 4,
-		'attack':5,
+		'power':5,
 		'hp': 12,
 		'types':['glacial','solar'],
 		'desc':''
@@ -240,7 +244,25 @@ func instanceUnit(unitName):
 	if doesScriptExist:
 		unit.set_script( load(scriptName ))
 	unit.render(unitName)
+	connect('avgStatsChanged', unit, 'updateInfo')
 	return unit
+	
+func updateAverageStats(array2d):
+	var powerSum = 0
+	var hpSum = 0
+	var divisor = 0
+	for unitArray in array2d:
+		print(unitArray)
+		for unit in unitArray:
+			print('	'+unit.id)
+			powerSum += unit.power
+			hpSum += unit.hp
+			divisor+=1
+	if divisor > 0:
+		avgStats['power'] = float(powerSum) / float(divisor)
+		avgStats['hp'] = float(hpSum) / float(divisor)
+	emit_signal("avgStatsChanged")
+	
 	
 func getPossibleUnitsBasedOnStage(stage):
 	#print('GETTING UNIT BASED ON STAGE: ',stage)
@@ -317,3 +339,5 @@ func playAudio(filepath):
 		filepath = 'res://resources/audio/'+filepath+'.ogg'
 	aud.stream = load(filepath)
 	aud.play()
+	
+

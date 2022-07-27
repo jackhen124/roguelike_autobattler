@@ -55,3 +55,9 @@ func _draw():
 	#draw_line(minPos, maxPos, Color(1,1,1), 2)
 	#draw_line(minPos, maxPos, Color(1,1,1), 2)
 	pass
+
+func getUnits():
+	var result = []
+	for spot in get_children():
+		result.append(spot.unit)
+	return result

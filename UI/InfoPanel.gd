@@ -24,10 +24,10 @@ func _ready():
 func spotHover(spot):
 	if spot.unit != null:
 		$UnitPanel.show()
-		$UnitPanel/Sprite.texture = load(str('res://units/sprites/',spot.unit.unitName,'.png'))
+		$UnitPanel/Sprite.texture = load(str('res://units/sprites/',spot.unit.id,'.png'))
 		$UnitPanel/Type1.texture = load(str('res://types/sprites/',spot.unit.types[0],'.png'))
 		$UnitPanel/Type2.texture = load(str('res://types/sprites/',spot.unit.types[1],'.png'))
-		$UnitPanel/HealthIndicator.setHp(spot.unit.hp, spot.unit.maxHp, true)
+		$UnitPanel/HealthIndicator.setHp(spot.unit.hp, spot.unit.maxHp)
 		$UnitPanel/Description.generateDesc(spot.unit.desc)
 	
 

@@ -50,6 +50,8 @@ func _ready():
 
 func afterReady():
 	store.refresh()
+	
+	Global.updateAverageStats([store.get_node('Selection').getUnits()])
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta):
@@ -116,10 +118,10 @@ func nextBattle():
 	battle.render(getLineupUnits(), stageNum)
 	#animaLeft($Bench)
 	var anima = Anima.begin($LeaveScreen)
-	anima.then({property = 'y',to = offscreenDis, duration = 3, relative = true})
+	anima.then({property = 'y',to = offscreenDis, duration = 1, relative = true})
 	anima.play()
 	anima = Anima.begin($GUI)
-	anima.then({property = 'y', to = -offscreenDis, duration = 3, relative = true, on_completed  = [funcref(battle, 'start'), []] })
+	anima.then({property = 'y', to = -offscreenDis, duration = 1, relative = true, on_completed  = [funcref(battle, 'start'), []] })
 	anima.play()
 	
 	lineupVertical = true

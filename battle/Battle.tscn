@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=2]
+[gd_scene load_steps=14 format=2]
 
 [ext_resource path="res://battle/Battle.gd" type="Script" id=1]
 [ext_resource path="res://spot_group.gd" type="Script" id=2]
@@ -7,6 +7,27 @@
 [ext_resource path="res://resources/backgrounds/sky.png" type="Texture" id=5]
 [ext_resource path="res://resources/backgrounds/grassy_ground.png" type="Texture" id=6]
 [ext_resource path="res://resources/backgrounds/grassy_hills.png" type="Texture" id=7]
+[ext_resource path="res://resources/theme/victory_theme.tres" type="Theme" id=8]
+[ext_resource path="res://resources/fonts/Comfortaa-VariableFont_wght.ttf" type="DynamicFontData" id=9]
+[ext_resource path="res://UI/CollectButton.tscn" type="PackedScene" id=10]
+[ext_resource path="res://battle/VictoryScreen.gd" type="Script" id=11]
+
+[sub_resource type="StyleBoxFlat" id=1]
+bg_color = Color( 0.317647, 0.317647, 0.317647, 0.415686 )
+border_width_left = 20
+border_width_top = 20
+border_width_right = 20
+border_width_bottom = 20
+border_color = Color( 0.278431, 0.278431, 0.278431, 1 )
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[sub_resource type="DynamicFont" id=2]
+size = 68
+outline_size = 1
+font_data = ExtResource( 9 )
 
 [node name="Battle" type="Node2D"]
 position = Vector2( -1, -2 )
@@ -56,3 +77,46 @@ texture = ExtResource( 6 )
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2( 633, 355 )
 zoom = Vector2( 1.2, 1.2 )
+
+[node name="VictoryScreen" type="Panel" parent="."]
+margin_left = 402.0
+margin_top = -282.0
+margin_right = 910.0
+margin_bottom = 429.0
+rect_pivot_offset = Vector2( 257, 709 )
+theme = ExtResource( 8 )
+custom_styles/panel = SubResource( 1 )
+script = ExtResource( 11 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Tween" type="Tween" parent="VictoryScreen"]
+
+[node name="Label" type="Label" parent="VictoryScreen"]
+margin_left = 120.0
+margin_top = 315.0
+margin_right = 388.0
+margin_bottom = 391.0
+custom_fonts/font = SubResource( 2 )
+text = "Victory!"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="CollectButton" parent="VictoryScreen" instance=ExtResource( 10 )]
+margin_left = 14.0
+margin_top = 419.0
+margin_right = 497.0
+margin_bottom = 505.0
+
+[node name="ContinueButton" type="Button" parent="VictoryScreen"]
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_top = -87.0
+margin_bottom = -46.0
+text = "Next"
+__meta__ = {
+"_edit_use_anchors_": false
+}

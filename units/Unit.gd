@@ -4,17 +4,19 @@ class_name Unit
 # Declare member variables here. Examples:
 # var a = 2
 # var b = "text"
+var battleStatusLabelScene = preload('res://UI/BattleStatusLabel.tscn')
+onready var statusLabels = $StatusLabels/StatusLabels
 signal death
 
 var held = false
 var player
 var state = 'store'
 var hp
-var attack
+var power
 var id
 var desc
 var level = 1
-var unitName
+
 var maxHp
 var types = []
 var hasAttacked = false
@@ -123,18 +125,29 @@ func _process(delta):
 func changeBattleState(newState):
 	battleState = newState
 	
+func setBattleMode(value):
+	if value == true:
+		$Type1.hide()
+		$Type2.hide()
+	else:
+		$Type1.show()
+		$Type2.show()
+		statuses = {}
+		updateInfo()
 	
 func render(_id, _level = 1):
+	id = _id
 	var data = Global.unitLibrary[_id]
 	hp = data.hp
-	unitName = _id
+	
 	types = data.types
 	maxHp = hp
-	attack = data.attack
-	id = _id
+	power = data.power
+	
 	desc = data.desc
 	
-	$Sprite.texture = load(str('res://units/sprites/',unitName, '.png'))
+	$Sprite.texture = load(str('res://units/sprites/',id, '.png'))
+	print('rendered: '+id)
 	$MoveParticles.texture = $Sprite.texture
 	#$MoveParticles.scale = $Sprite.scale
 	
@@ -157,7 +170,7 @@ func levelUp(emitParticles = false):
 	hp*=2
 	maxHp*=2
 	
-	attack*=2
+	power*=2
 	$CombineParticles.emitting = true
 	$Sprite.scale *= 1.5
 	$MoveParticles.scale = $Sprite.scale
@@ -165,23 +178,40 @@ func levelUp(emitParticles = false):
 	updateInfo()
 	
 	
-func updateInfo():
-	$AttackRect/AttackLabel.text = str(attack)
+func updateInfo(hpAnimation = 'none'):
+	$AttackRect/AttackLabel.text = str(power)
 	$HealthIndicator/HpLabel.text = str(hp)
 	
 	
-	$HealthIndicator.setHp(hp, maxHp)
-	
+	$HealthIndicator.setHp(hp, maxHp, hpAnimation)
+	for status in statuses:
+		var labelNode
+		if !is_instance_valid(statusLabels.get_node(status)):
+			var newLabel = battleStatusLabelScene.instance()
+			statusLabels.add_child(newLabel)
+			newLabel.name = status
+			if Global.keywords[status].has('color'):
+				newLabel.modulate = Global.keywords[status].color
+			labelNode = newLabel
+		else:
+			labelNode = statusLabels.get_node(status)
+		labelNode.text = str(status, ' ', statuses[status])
+		
+		
 
 
 func setEnemy():
 	scale.x *=-1
 	$MoveParticles.scale.x =1
 	$HealthIndicator.set_scale(Vector2($HealthIndicator.get_scale().x*-1, 1))
+	$HealthIndicator.flipped = true
+	$StatusLabels.scale.x*=-1
+	$StatusLabels.global_position.x += 20* abs(scale.x)
+	#$StatusLabels.position.x 
 	#$AttackRect.set_scale(Vector2($AttackRect.get_scale().x*-1,1))
 	
 func waitAnd(time, afterMethod, args = []):
-	
+	print(id+ ' wait and')
 	waitTime = time
 	battleState = battleStates.waiting
 	afterWaitMethod = afterMethod
@@ -194,14 +224,18 @@ func randomTarget(enemyArray):
 	return enemyArray[rand]
 	
 func attack(enemyArray):
-	print(unitName, ' attacking enemy')
+	print(id, ' attacking enemy')
 	curTarget = randomTarget(enemyArray)
 	$MoveParticles.emitting = true
 	battleState = battleStates.preAttackMove
 	
 func attackAction():
+	var prop = float(power) / float(Global.avgStats.power)
+	$HitAudio.volume_db = min(-10 + 9*prop, 25)
+	
+	$HitAudio.play()
 	$MoveParticles.emitting = false
-	curTarget.takeDamage(attack)
+	curTarget.takeDamage(power)
 	
 	pass
 
@@ -216,11 +250,11 @@ func turnDone():
 
 	
 	
-func takeDamage(amount):
+func takeDamage(amount, animation = 'chunk'):
 	hp-= amount
 	if hp <= 0:
 		die()
-	updateInfo()
+	updateInfo(animation)
 		
 func die():
 	
@@ -241,9 +275,9 @@ func roundEnd():
 		actionQueue.append('poison')
 		
 		
-	executeRoundEndActionQueue()
+	executeActionQueue()
 	
-func executeRoundEndActionQueue():
+func executeActionQueue():
 	if actionQueue.size() == 0:
 		print(id+' no actions in queue')
 		turnDone()
@@ -251,14 +285,17 @@ func executeRoundEndActionQueue():
 		print(str(id,' executing action queue: ',actionQueue))
 		var actionWait = 0.5
 		if actionQueue[0] == 'poison':
+			
 			takeDamage(statuses['poison'])
 			statuses['poison'] -= 1
+			
+			
 			if statuses['poison'] <= 0:
 				statuses.erase('poison')
 			updatePoisonParticles()
 		actionQueue.remove(0)
 		
-		waitAnd(actionWait, 'executeRoundEndActionQueue')
+		waitAnd(actionWait, 'executeActionQueue')
 	pass
 	
 func applyEffect(effectName, amount, target):
@@ -272,15 +309,23 @@ func recieveEffect(effectName, amount):
 		statuses[effectName] = amount
 	if effectName == 'poison':
 		updatePoisonParticles()
-		
+	
+	updateInfo()
 	pass
 	
-func updatePoisonParticles():
+func updatePoisonParticles(alwaysShowMain = false):
+	var poisonProp = 0
+	if !statuses.has('poison'):
+		poisonProp = 0
+	else:
+		poisonProp = float(statuses['poison']) / maxHp
+	$PoisonParticles.amount = CustomFormulas.proportion(10, 40, poisonProp)
+	$PoisonParticles.emitting = true
 	if statuses.has('poison'):
-		var poisonProp = float(statuses['poison']) / maxHp
+		
 		$PersistantPoisonParticles.amount = CustomFormulas.proportion(1, 5, poisonProp)
-		$PoisonParticles.amount = CustomFormulas.proportion(10, 40, poisonProp)
+		
 		$PersistantPoisonParticles.emitting = true
-		$PoisonParticles.emitting = true
+		
 	else:
 		$PersistantPoisonParticles.emitting = false

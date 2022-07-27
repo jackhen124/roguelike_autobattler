@@ -19,14 +19,25 @@ var averageHp = 5
 var centerPos = Vector2(0,0)
 onready var enemiesStartPos = $EnemySpots.global_position
 
+var victoryAnima
 enum states {idle, attack, roundEnd}
 var state = states.idle
 
 var waitingOnUnit = false
+
+var playerVictory = false
 # Called when the node enters the scene tree for the first time.
 func _ready():
+	victoryAnima = Anima.begin($VictoryScreen)
+	victoryAnima.then({animation = 'bouncing_in_down', duration = 2, easing = Anima.EASING.EASE_IN_OUT})
+	#victoryAnima.then({animation = 'zoom_in_down', duration = 2, sing = Anima.EASING.EASE_OUT_BOUNCE})
+	#victoryAnima.then({from = -700, to = -400, property = 'y', duration = 2, sing = Anima.EASING.EASE_OUT_BOUNCE})
+	victoryAnima.set_visibility_strategy(Anima.VISIBILITY.HIDDEN_AND_TRANSPARENT)
+	if Global.game.debug:
+		victoryAnima.play()
+		$VictoryScreen.show()
 	
-	
+	#$VictoryScreen.hide()
 	
 	pass # Replace with function body.
 
@@ -52,6 +63,8 @@ func render(allyUnitArray, difficulty):
 	
 		
 	print('allies: ', allies, ' enemies: ',enemies)
+	var allUnits = [allies,enemies]
+	Global.updateAverageStats(allUnits)
 	#start()
 	pass
 	
@@ -61,12 +74,13 @@ func start():
 		ally.battle = self
 		ally.connect('death', self, 'removeAlly', [ally])
 		ally.player = player
+		ally.updateInfo()
 		#ally.allies = allies
 		#ally.enemies = allies
 		pass
 	for enemy in enemies:
 		enemy.battle = self
-		
+		enemy.updateInfo()
 		#enemy.allies = enemies
 		#enemy.enemies = allies
 		pass
@@ -77,6 +91,10 @@ func start():
 	centerPos = $EnemiesPos.global_position.move_toward($AlliesPos.global_position, float($EnemiesPos.global_position.distance_to($AlliesPos.global_position))/2.0)
 	print('battle centerPos ', centerPos)
 	state = states.attack
+	
+	if Global.game.debug:
+		end()
+		return
 	nextAction()
 	
 
@@ -98,16 +116,15 @@ func nextAction():
 			allyTurn = true
 		if allyTurn:
 			
-			
 			nextAttacker = getNextActionTaker(allies)
 			#print('	next attacker: ',nextAttacker)
 			if nextAttacker != null:
-				print('	calling for ally action')
+				#print('	calling for ally action')
 				takeAction(nextAttacker)
 				allyTurn = false
 				return
 			else:
-				print('	all allies are done...')
+				#print('	all allies are done...')
 				alliesDone = true
 				allyTurn = false
 				nextAction()
@@ -116,25 +133,25 @@ func nextAction():
 			
 			nextAttacker = getNextActionTaker(enemies)
 			if nextAttacker != null:
-				print('	calling for enemy action')
+				#print('	calling for enemy action')
 				takeAction(nextAttacker)
 				allyTurn = true
 				return
 			else:
-				print('	all enemies are done...')
+				#print('	all enemies are done...')
 				allyTurn = true
 				enemiesDone = true
 				nextAction()
 				return
 	else:
-		print('battling over')
+		print('battle over')
 		#actionPhaseDone()
-		#end()
+		end()
 		
 func takeAction(actionTaker):
 	waitingOnUnit = true
 	if state == states.attack:
-		print(actionTaker.id + ' taking next action: attack')
+		#print(actionTaker.id + ' taking next action: attack')
 		actionTaker.hasAttacked = true
 
 		var target
@@ -144,7 +161,7 @@ func takeAction(actionTaker):
 			target = allies
 		actionTaker.attack(target)
 	elif state == states.roundEnd:
-		print(actionTaker.id + ' taking next action: roundEnd')
+		#print(actionTaker.id + ' taking next action: roundEnd')
 		actionTaker.hasDoneRoundEnd = true
 
 
@@ -152,7 +169,7 @@ func takeAction(actionTaker):
 
 func actionPhaseDone():
 	if state == states.attack:
-		print('attack phase over')
+		#print('attack phase over')
 		state = states.roundEnd
 		alliesDone = false
 		enemiesDone = false
@@ -160,7 +177,7 @@ func actionPhaseDone():
 		nextAction()
 		
 	elif state == states.roundEnd:
-		print('roundEnd phase over')
+		#print('roundEnd phase over')
 		roundNum +=1
 		print('round: ', roundNum)
 		alliesDone = false
@@ -208,8 +225,9 @@ func addUnit(group, unitId, unitLevel = 1):
 	
 func end():
 	battleOver = true
-	
-	player.afterBattle()
+	victoryAnima.play()
+	$VictoryScreen.show()
+	#player.afterBattle()
 	print('battle over')
 	pass
 	
@@ -234,6 +252,7 @@ func removeEnemy(unit):
 	enemies.remove(enemies.find(unit))
 	#print('enemies: ', enemies)
 	if enemies.size() <= 0:
+		playerVictory = true
 		battleOver = true
 		print('battle over enemies dead')
 func generateEnemies(difficulty):
@@ -255,6 +274,9 @@ func generateEnemies(difficulty):
 			level = 2
 		else: 
 			level = 1
-		#addEnemy(randUnitIndex)
-		addEnemy('snail')
+		
+		if Global.game.debug:
+			addEnemy('elephant')
+		else:
+			addEnemy(randUnitIndex)
 	$EnemySpots.update()
