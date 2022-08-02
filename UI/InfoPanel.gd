@@ -22,7 +22,7 @@ func _ready():
 
 
 func spotHover(spot):
-	if spot.unit != null:
+	if is_instance_valid(spot.unit):
 		$UnitPanel.show()
 		$UnitPanel/Sprite.texture = load(str('res://units/sprites/',spot.unit.id,'.png'))
 		$UnitPanel/Type1.texture = load(str('res://types/sprites/',spot.unit.types[0],'.png'))

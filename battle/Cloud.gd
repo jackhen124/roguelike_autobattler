@@ -5,7 +5,7 @@ extends Sprite
 # var a = 2
 # var b = "text"
 
-var speed = 7
+var speed = 6.2
 
 var yRange = 45
 var speedRange 

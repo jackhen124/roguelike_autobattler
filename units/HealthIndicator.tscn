@@ -4,7 +4,7 @@
 [ext_resource path="res://resources/heart.png" type="Texture" id=2]
 [ext_resource path="res://UI/HealthIndicator.gd" type="Script" id=3]
 
-[sub_resource type="DynamicFont" id=3]
+[sub_resource type="DynamicFont" id=1]
 size = 25
 font_data = ExtResource( 1 )
 
@@ -23,7 +23,7 @@ margin_top = -3.83924
 margin_right = 15.2209
 margin_bottom = 27.1608
 rect_pivot_offset = Vector2( 14.637, 14.5387 )
-custom_fonts/font = SubResource( 3 )
+custom_fonts/font = SubResource( 1 )
 custom_colors/font_color = Color( 0, 0, 0, 1 )
 text = "12"
 align = 1

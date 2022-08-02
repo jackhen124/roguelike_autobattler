@@ -1,0 +1,15 @@
+[remap]
+
+importer="ogg_vorbis"
+type="AudioStreamOGGVorbis"
+path="res://.import/armor.ogg-28706397501bdfc98c1d2434573e65ac.oggstr"
+
+[deps]
+
+source_file="res://resources/audio/armor.ogg"
+dest_files=[ "res://.import/armor.ogg-28706397501bdfc98c1d2434573e65ac.oggstr" ]
+
+[params]
+
+loop=false
+loop_offset=0

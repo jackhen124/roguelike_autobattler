@@ -51,6 +51,14 @@ position = Vector2( 640.941, 786 )
 script = ExtResource( 5 )
 disToCover = 700
 
+[node name="CoinLabel" parent="." instance=ExtResource( 7 )]
+margin_left = 109.941
+margin_top = 657.0
+margin_right = 109.941
+margin_bottom = 657.0
+rect_scale = Vector2( 2, 2 )
+isOwned = true
+
 [node name="LeaveScreen" type="Node2D" parent="."]
 
 [node name="BenchSpots" type="Node2D" parent="LeaveScreen"]
@@ -69,14 +77,6 @@ disToCover = 900
 [node name="Spot5" parent="LeaveScreen/BenchSpots" instance=ExtResource( 1 )]
 
 [node name="Spot6" parent="LeaveScreen/BenchSpots" instance=ExtResource( 1 )]
-
-[node name="CoinLabel" parent="LeaveScreen" instance=ExtResource( 7 )]
-margin_left = 110.941
-margin_top = 579.0
-margin_right = 110.941
-margin_bottom = 579.0
-rect_scale = Vector2( 2, 2 )
-isOwned = true
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2( 638.94, 360 )
@@ -126,6 +126,7 @@ __meta__ = {
 }
 
 [node name="ElementPanel" type="Panel" parent="GUI/InfoPanel"]
+visible = false
 anchor_right = 1.0
 anchor_bottom = 1.0
 __meta__ = {
@@ -219,7 +220,6 @@ custom_fonts/normal_font = ExtResource( 16 )
 text = "the description will go here"
 
 [node name="UnitPanel" type="Panel" parent="GUI/InfoPanel"]
-visible = false
 anchor_right = 1.0
 anchor_bottom = 1.0
 __meta__ = {
@@ -241,11 +241,8 @@ __meta__ = {
 }
 
 [node name="AttackIndicator" parent="GUI/InfoPanel/UnitPanel" instance=ExtResource( 12 )]
-margin_left = 52.9406
-margin_top = 124.0
-margin_right = 83.9406
-margin_bottom = 152.0
-rect_scale = Vector2( 2.5, 2.5 )
+position = Vector2( 71.9406, 159 )
+scale = Vector2( 2, 2 )
 
 [node name="HealthIndicator" parent="GUI/InfoPanel/UnitPanel" instance=ExtResource( 13 )]
 position = Vector2( 66.9406, 48 )
@@ -292,10 +289,11 @@ __meta__ = {
 }
 
 [node name="CoinLabel" parent="GUI/RerollButton" instance=ExtResource( 7 )]
-margin_left = 53.0
-margin_top = 110.0
-margin_right = 53.0
-margin_bottom = 110.0
+margin_left = 66.0
+margin_top = 143.0
+margin_right = 66.0
+margin_bottom = 143.0
+isPrice = true
 
 [node name="BattleParent" type="Node2D" parent="."]
 z_index = -2

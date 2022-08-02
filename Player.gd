@@ -19,7 +19,7 @@ onready var store = $GUI/Store
 onready var benchSpots = $LeaveScreen/BenchSpots
 onready var lineupSpots = $LineupSpots
 onready var infoPanel = $GUI/InfoPanel
-var coinLabel
+onready var coinLabel = $CoinLabel
 var offscreenDis = 700
 
 var rerollCost = 0
@@ -33,7 +33,7 @@ func _ready():
 	if Global.game.debug:
 		coins = 100
 		addUnit('skunk')
-	coinLabel = $LeaveScreen/CoinLabel
+	
 	call_deferred('afterReady')
 	
 	for spot in lineupSpots.get_children():
@@ -91,18 +91,19 @@ func _process(delta):
 func afterBattle():
 	stageNum +=1
 	lineupVertical = false
-	var anima = Anima.begin($LeaveScreen)
-	anima.then({property = 'y',to = -offscreenDis, duration = 3, relative = true})
+	#var anima = Anima.begin($LeaveScreen)
+	#anima.then({property = 'y',to = -offscreenDis, duration = 1.5, relative = true})
 	for spot in lineupSpots.get_children():
 		spot.render('lineup')
-	anima.play()
-	anima = Anima.begin($GUI)
-	anima.then({property = 'y', to = offscreenDis, duration = 3, relative = true})
+	#anima.play()
+	var anima = Anima.begin($GUI)
+	anima.then({property = 'y', to = offscreenDis, duration = 1.5, relative = true})
 	anima.play()
 	
 	$GUI/ReadyButton.show()
 	store.refresh()
-	coins+=1+stageNum
+	$LeaveScreen.modulate.a = 1
+	
 	
 	
 func nextBattle():
@@ -116,15 +117,18 @@ func nextBattle():
 	for spot in lineupSpots.get_children():
 		spot.render('battle')
 	battle.render(getLineupUnits(), stageNum)
+	battle.allySpots = $LineupSpots
 	#animaLeft($Bench)
 	var anima = Anima.begin($LeaveScreen)
-	anima.then({property = 'y',to = offscreenDis, duration = 1, relative = true})
+	#anima.then({property = 'y',to = offscreenDis, duration = 1, relative = true})
+	anima.then({property = 'opacity',to = 0, duration = 1})
+	anima.with({node = $CoinLabel, property = 'opacity', to = 0, duration = 1})
 	anima.play()
 	anima = Anima.begin($GUI)
 	anima.then({property = 'y', to = -offscreenDis, duration = 1, relative = true, on_completed  = [funcref(battle, 'start'), []] })
 	anima.play()
 	
-	lineupVertical = true
+	
 	
 func unitDie(unit):
 	var newSpot = addSpot($Graveyard, 'graveyard')
@@ -240,3 +244,11 @@ func _on_RerollButton_pressed():
 			rerollCost+=1
 		updateInfo()
 	pass # Replace with function body.
+	
+func collectLoot(button):
+	print('collecting loot')
+	if button.type == 'coins':
+		coins+=button.amount
+		Global.playAudio('coin')
+		
+	updateInfo()

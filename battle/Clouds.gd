@@ -26,6 +26,6 @@ func spawn(randomX = false):
 func _process(delta):
 	if cloudTimer<=0:
 		spawn()
-		cloudTimer = CustomFormulas.randomValue(20, 0.2)
+		cloudTimer = CustomFormulas.randomValue(23, 0.2)
 	cloudTimer -= delta
 	pass

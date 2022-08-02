@@ -13,9 +13,11 @@ var player
 var state = 'store'
 var hp
 var power
+var curPower
 var id
 var desc
 var level = 1
+var armor = 0
 
 var maxHp
 var types = []
@@ -73,7 +75,7 @@ func _process(delta):
 			scalingUp = true
 			
 	
-	var attackFromDisFromTarget = 100
+	var attackFromDisFromTarget = 150
 	var moveSpeed = 250
 	var bonusSpeed
 	if is_instance_valid(curTarget):
@@ -109,7 +111,7 @@ func _process(delta):
 					battleState = battleStates.attack
 		if battleState == battleStates.attack:
 			global_position = global_position.move_toward(curTarget.global_position, delta*moveSpeed)
-			if global_position.distance_to(curTarget.global_position) < attackFromDisFromTarget/2:
+			if global_position.distance_to(curTarget.global_position) < attackFromDisFromTarget/3:
 				attackAction()
 				battleState = battleStates.postAttack
 				curTarget = null
@@ -129,9 +131,11 @@ func setBattleMode(value):
 	if value == true:
 		$Type1.hide()
 		$Type2.hide()
+		$AttackIndicator.position = $BattlePowerPos.position
 	else:
 		$Type1.show()
 		$Type2.show()
+		$AttackIndicator.position = $NormalPowerPos.position
 		statuses = {}
 		updateInfo()
 	
@@ -145,9 +149,11 @@ func render(_id, _level = 1):
 	power = data.power
 	
 	desc = data.desc
+	if data.has('armor'):
+		armor = data.armor
 	
 	$Sprite.texture = load(str('res://units/sprites/',id, '.png'))
-	print('rendered: '+id)
+	
 	$MoveParticles.texture = $Sprite.texture
 	#$MoveParticles.scale = $Sprite.scale
 	
@@ -179,11 +185,18 @@ func levelUp(emitParticles = false):
 	
 	
 func updateInfo(hpAnimation = 'none'):
-	$AttackRect/AttackLabel.text = str(power)
-	$HealthIndicator/HpLabel.text = str(hp)
 	
-	
+
 	$HealthIndicator.setHp(hp, maxHp, hpAnimation)
+	$HealthIndicator.setPower(power)
+	if statuses.has('poison'):
+		$HealthIndicator.setPoison(statuses['poison'])
+	else:
+		$HealthIndicator.setPoison(0)
+	var totalArmor = armor
+	if statuses.has('armor'):
+		totalArmor+=statuses['armor']
+	$HealthIndicator.setArmor(totalArmor)
 	for status in statuses:
 		var labelNode
 		if !is_instance_valid(statusLabels.get_node(status)):
@@ -196,7 +209,7 @@ func updateInfo(hpAnimation = 'none'):
 		else:
 			labelNode = statusLabels.get_node(status)
 		labelNode.text = str(status, ' ', statuses[status])
-		
+	
 		
 
 
@@ -207,6 +220,7 @@ func setEnemy():
 	$HealthIndicator.flipped = true
 	$StatusLabels.scale.x*=-1
 	$StatusLabels.global_position.x += 20* abs(scale.x)
+	$AttackIndicator.setFlipped()
 	#$StatusLabels.position.x 
 	#$AttackRect.set_scale(Vector2($AttackRect.get_scale().x*-1,1))
 	
@@ -251,10 +265,26 @@ func turnDone():
 	
 	
 func takeDamage(amount, animation = 'chunk'):
+	
+	if getTotalArmor() > 0:
+		Global.playAudio('armor', -5, 0.06)
+		amount -= getTotalArmor()
 	hp-= amount
 	if hp <= 0:
 		die()
 	updateInfo(animation)
+	
+func getTotalArmor():
+	var totalArmor = armor
+	if statuses.has('armor'):
+		totalArmor+=statuses['armor']
+	return totalArmor
+	
+func getTotalPower():
+	var total = power
+	if statuses.has('power'):
+		total+=statuses['power']
+	return total
 		
 func die():
 	
@@ -264,7 +294,7 @@ func die():
 		
 		player.unitDie(self)
 	else:
-		queue_free()
+		hide()
 	
 func onAttack():
 	
@@ -303,6 +333,7 @@ func applyEffect(effectName, amount, target):
 	pass
 
 func recieveEffect(effectName, amount):
+	print(id + 'recieving ' + effectName)
 	if statuses.has(effectName):
 		statuses[effectName] += amount
 	else:
@@ -311,6 +342,9 @@ func recieveEffect(effectName, amount):
 		updatePoisonParticles()
 	
 	updateInfo()
+	pass
+	
+func recieveModifier():
 	pass
 	
 func updatePoisonParticles(alwaysShowMain = false):
@@ -329,3 +363,5 @@ func updatePoisonParticles(alwaysShowMain = false):
 		
 	else:
 		$PersistantPoisonParticles.emitting = false
+		
+

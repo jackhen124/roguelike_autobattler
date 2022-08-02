@@ -13,7 +13,8 @@ onready var button = $Button
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
-	
+	$Sprite.self_modulate.a = 0.3
+	$Sprite/Sprite.hide()
 	#$Pos.position = rect_size / 2
 	pass # Replace with function body.
 	
@@ -36,6 +37,7 @@ func setup():
 	if type == 'store':
 		
 		$Button.modulate = Color(1,1,0.8)
+		$CoinLabel.isPrice = true
 	else:
 		$CoinLabel.hide()
 	if type == 'bench':
@@ -107,4 +109,13 @@ func _on_Button_pressed():
 func _on_Button_mouse_entered():
 	if is_instance_valid(Global.player):
 		Global.player.spotHover(self)
+	if is_instance_valid(unit):
+		$Sprite.self_modulate.a = 1
+		#$Sprite/Sprite.show()
+	pass # Replace with function body.
+
+
+func _on_Button_mouse_exited():
+	$Sprite.self_modulate.a = 0.3
+	#$Sprite/Sprite.hide()
 	pass # Replace with function body.

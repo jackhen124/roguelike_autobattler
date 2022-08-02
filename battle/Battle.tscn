@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=2]
+[gd_scene load_steps=16 format=2]
 
 [ext_resource path="res://battle/Battle.gd" type="Script" id=1]
 [ext_resource path="res://spot_group.gd" type="Script" id=2]
@@ -10,23 +10,29 @@
 [ext_resource path="res://resources/theme/victory_theme.tres" type="Theme" id=8]
 [ext_resource path="res://resources/fonts/Comfortaa-VariableFont_wght.ttf" type="DynamicFontData" id=9]
 [ext_resource path="res://UI/CollectButton.tscn" type="PackedScene" id=10]
-[ext_resource path="res://battle/VictoryScreen.gd" type="Script" id=11]
+[ext_resource path="res://battle/PrebattleChoice.gd" type="Script" id=12]
 
-[sub_resource type="StyleBoxFlat" id=1]
-bg_color = Color( 0.317647, 0.317647, 0.317647, 0.415686 )
-border_width_left = 20
-border_width_top = 20
-border_width_right = 20
-border_width_bottom = 20
-border_color = Color( 0.278431, 0.278431, 0.278431, 1 )
-corner_radius_top_left = 40
-corner_radius_top_right = 40
-corner_radius_bottom_right = 40
-corner_radius_bottom_left = 40
+[sub_resource type="DynamicFont" id=1]
+size = 90
+outline_size = 1
+outline_color = Color( 0, 0, 0, 1 )
+font_data = ExtResource( 9 )
 
 [sub_resource type="DynamicFont" id=2]
+size = 60
+outline_size = 1
+outline_color = Color( 0, 0, 0, 1 )
+font_data = ExtResource( 9 )
+
+[sub_resource type="DynamicFont" id=3]
 size = 68
 outline_size = 1
+font_data = ExtResource( 9 )
+
+[sub_resource type="DynamicFont" id=4]
+size = 45
+outline_size = 1
+outline_color = Color( 0, 0, 0, 1 )
 font_data = ExtResource( 9 )
 
 [node name="Battle" type="Node2D"]
@@ -34,15 +40,15 @@ position = Vector2( -1, -2 )
 script = ExtResource( 1 )
 
 [node name="EnemiesPos" type="Position2D" parent="."]
-position = Vector2( 802, 354 )
+position = Vector2( 933, 397 )
 
 [node name="AlliesPos" type="Position2D" parent="."]
-position = Vector2( 517, 353 )
+position = Vector2( 311, 382 )
 
 [node name="Tween" type="Tween" parent="."]
 
 [node name="EnemySpots" type="Node2D" parent="."]
-position = Vector2( 636, 136 )
+position = Vector2( 1094, 399 )
 script = ExtResource( 2 )
 disToCover = 700
 
@@ -78,45 +84,160 @@ texture = ExtResource( 6 )
 position = Vector2( 633, 355 )
 zoom = Vector2( 1.2, 1.2 )
 
-[node name="VictoryScreen" type="Panel" parent="."]
-margin_left = 402.0
-margin_top = -282.0
-margin_right = 910.0
-margin_bottom = 429.0
-rect_pivot_offset = Vector2( 257, 709 )
-theme = ExtResource( 8 )
-custom_styles/panel = SubResource( 1 )
-script = ExtResource( 11 )
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="Intro" type="Label" parent="CanvasLayer"]
+visible = false
+margin_left = 2.0
+margin_top = 155.0
+margin_right = 1281.0
+margin_bottom = 257.0
+custom_fonts/font = SubResource( 1 )
+text = "Pushover Prairie"
+align = 1
 __meta__ = {
 "_edit_use_anchors_": false
 }
 
-[node name="Tween" type="Tween" parent="VictoryScreen"]
-
-[node name="Label" type="Label" parent="VictoryScreen"]
-margin_left = 120.0
-margin_top = 315.0
-margin_right = 388.0
-margin_bottom = 391.0
+[node name="Intro2" type="Label" parent="CanvasLayer/Intro"]
+margin_left = -2.0
+margin_top = 121.0
+margin_right = 1273.0
+margin_bottom = 189.0
 custom_fonts/font = SubResource( 2 )
+text = "1-1"
+align = 1
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="VictoryScreen" type="Panel" parent="CanvasLayer"]
+margin_left = 430.0
+margin_top = 126.0
+margin_right = 855.0
+margin_bottom = 530.0
+theme = ExtResource( 8 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="CanvasLayer/VictoryScreen"]
+margin_left = 77.0
+margin_top = 37.0
+margin_right = 345.0
+margin_bottom = 113.0
+custom_fonts/font = SubResource( 3 )
 text = "Victory!"
 __meta__ = {
 "_edit_use_anchors_": false
 }
 
-[node name="CollectButton" parent="VictoryScreen" instance=ExtResource( 10 )]
-margin_left = 14.0
-margin_top = 419.0
-margin_right = 497.0
-margin_bottom = 505.0
-
-[node name="ContinueButton" type="Button" parent="VictoryScreen"]
+[node name="ContinueButton" type="Button" parent="CanvasLayer/VictoryScreen"]
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-margin_top = -87.0
-margin_bottom = -46.0
-text = "Next"
+margin_left = 1.0
+margin_top = -81.0
+margin_right = 1.0
+margin_bottom = -1.0
+rect_min_size = Vector2( 0, 80 )
+text = "Continue"
 __meta__ = {
 "_edit_use_anchors_": false
 }
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CanvasLayer/VictoryScreen"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 2.0
+margin_top = 146.0
+margin_right = 2.0
+margin_bottom = 4.0
+mouse_filter = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="CollectButton1" parent="CanvasLayer/VictoryScreen/VBoxContainer" instance=ExtResource( 10 )]
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_top = 0.0
+margin_right = 425.0
+margin_bottom = 80.0
+
+[node name="CollectButton2" parent="CanvasLayer/VictoryScreen/VBoxContainer" instance=ExtResource( 10 )]
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_top = 84.0
+margin_right = 425.0
+margin_bottom = 164.0
+
+[node name="CollectButton3" parent="CanvasLayer/VictoryScreen/VBoxContainer" instance=ExtResource( 10 )]
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_top = 168.0
+margin_right = 425.0
+margin_bottom = 248.0
+
+[node name="CollectButton4" parent="CanvasLayer/VictoryScreen/VBoxContainer" instance=ExtResource( 10 )]
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_top = 252.0
+margin_right = 425.0
+margin_bottom = 332.0
+
+[node name="PrebattleChoice" type="Panel" parent="CanvasLayer"]
+visible = false
+margin_left = 431.0
+margin_top = 151.0
+margin_right = 822.0
+margin_bottom = 612.0
+theme = ExtResource( 8 )
+script = ExtResource( 12 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="ChoiceLabel" type="RichTextLabel" parent="CanvasLayer/PrebattleChoice"]
+margin_left = 30.0
+margin_top = 30.0
+margin_right = 358.0
+margin_bottom = 329.0
+
+[node name="Accept" type="Button" parent="CanvasLayer/PrebattleChoice"]
+margin_left = 26.0
+margin_top = 362.0
+margin_right = 179.0
+margin_bottom = 436.0
+text = "Accept"
+
+[node name="Decline" type="Button" parent="CanvasLayer/PrebattleChoice"]
+margin_left = 206.0
+margin_top = 361.0
+margin_right = 359.0
+margin_bottom = 435.0
+text = "Decline"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="RoundLabel" type="Label" parent="CanvasLayer"]
+visible = false
+margin_left = 511.0
+margin_top = 69.0
+margin_right = 551.0
+margin_bottom = 104.0
+custom_fonts/font = SubResource( 4 )
+text = "Round"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[connection signal="pressed" from="CanvasLayer/VictoryScreen/ContinueButton" to="." method="_on_ContinueButton_pressed"]
+[connection signal="choiceMade" from="CanvasLayer/PrebattleChoice" to="." method="_on_PrebattleChoice_choiceMade"]
+[connection signal="pressed" from="CanvasLayer/PrebattleChoice/Accept" to="CanvasLayer/PrebattleChoice" method="_on_Accept_pressed"]
+[connection signal="pressed" from="CanvasLayer/PrebattleChoice/Decline" to="CanvasLayer/PrebattleChoice" method="_on_Decline_pressed"]

@@ -11,12 +11,24 @@ var unitScene = preload("res://units/Unit.tscn")
 var player
 var game
 
+var timer = Timer.new()
+
 var tieredLibrary = []
 var maxTier = 4
 
-var avgStats = {'power':0, 'hp': 0}
+var avgStats = {'power':1, 'hp': 1}
 var onScreenUnits = []
 const keywords = {
+	'hp':{
+		'type': 'buff',
+		'desc':"HP represents how much damage a unit can withstand before fainting",
+		'color':'#32e691'
+	},
+	'power':{
+		'type': 'buff',
+		'desc':"Power represents damage done when attacking",
+		'color':'#ae4b4f'
+	},
 	'heal':{
 		'type': 'buff',
 		'desc':"increase HP. any healing above max HP will still increase HP at half effectiveness, and return to max after the battle",
@@ -34,8 +46,9 @@ const keywords = {
 	},
 	'armor':{
 		'type':'buff',
-		'desc': "Take less damage from all sources equal to defense",
-		'color':'#a2a568'
+		'desc': "Reduce all damage taken by 1 per armor",
+		#'color':'#a2a568' # snail colored
+		'color':'#c3d5dd'
 	},
 	'regeneration':{
 		'type':'buff',
@@ -141,6 +154,7 @@ const unitLibrary = {
 		'tier':1,
 		'power':2,
 		'hp': 8,
+		'armor':1,
 		'types':['earthen', 'aquatic'],
 		'desc':"armor:1"
 		
@@ -206,6 +220,9 @@ const unitLibrary = {
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
+	
+	add_child(timer)
+	timer.one_shot = true
 	rng.randomize()
 	randomize()
 	
@@ -224,6 +241,8 @@ func _ready():
 		#print(pu.size(), ' possible units at stage ',i+1,':',pu)
 	pass # Replace with function body.
 
+
+	
 
 func addSpot(parentNode):
 	var newSpot = spotScene.instance()
@@ -261,6 +280,7 @@ func updateAverageStats(array2d):
 	if divisor > 0:
 		avgStats['power'] = float(powerSum) / float(divisor)
 		avgStats['hp'] = float(hpSum) / float(divisor)
+	print('AVG stats: '+ str(avgStats))
 	emit_signal("avgStatsChanged")
 	
 	
@@ -332,12 +352,21 @@ func percentIsAtLeastTier(tier):
 		i+=1
 	return float(percentSum) / float(totalSum)
 
-func playAudio(filepath):
+func playAudio(filepath, volume = 0, delay = 0):
+	if delay > 0:
+		
+		
+		timer.connect("timeout", self, 'playAudio', [filepath, volume])
+		timer.start(delay)
+		return
+		
 	var aud = AudioStreamPlayer.new()
 	add_child(aud)
 	if !ResourceLoader.exists(filepath):
 		filepath = 'res://resources/audio/'+filepath+'.ogg'
+
 	aud.stream = load(filepath)
+	
 	aud.play()
 	
 

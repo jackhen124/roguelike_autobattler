@@ -6,7 +6,7 @@ extends Control
 # var b = "text"
 export var initialCount = 0
 export var isOwned = false
-
+export var isPrice = false
 var coinsNeeded = 0
 # Called when the node enters the scene tree for the first time.
 func _ready():
@@ -36,7 +36,7 @@ func setCoins(numCoins):
 		coinsNeeded = numCoins
 		
 func update():
-	if !isOwned:
+	if isPrice:
 		
 		if Global.player.coins < coinsNeeded:
 			$Label.modulate = Color(1,0.4,0.4)
