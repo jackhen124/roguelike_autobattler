@@ -61,20 +61,20 @@ func generateKeywordText(keyword, suffix = ''):
 		#keyword = str(Global.elementLibrary[elementName]['unitsNeeded'])
 		keyword = elementString(keyword)
 		if Global.elementLibrary[elementName].has('color'):
-			if Global.elementLibrary[elementName]['color'] != '':
-				before.append(str('color=',Global.elementLibrary[elementName]['color']))
-				after.append('color')
+			
+			before.append(str('color=',Global.elementLibrary[elementName]['color']))
+			after.append('color')
 	if Global.elementLibrary.has(keyword):
 		if Global.elementLibrary[keyword].has('color'):
-			if Global.elementLibrary[keyword]['color'] != '':
-				before.append(str('color=',Global.elementLibrary[elementName]['color']))
-				after.append('color')
+			
+			before.append(str('color=',Global.elementLibrary[elementName]['color']))
+			after.append('color')
 	elif Global.keywords.has(keyword):
 		
 		if Global.keywords[keyword].has('color'):
-			if Global.keywords[keyword]['color'] != '':
-				before.append(str('color=',Global.keywords[keyword]['color']))
-				after.append('color')
+			
+			before.append(str('color=',Global.keywords[keyword]['color']))
+			after.append('color')
 	#[fade start=4 length=14][/fade]
 	keyword = keyword.to_upper()+ suffix
 	

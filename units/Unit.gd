@@ -7,19 +7,21 @@ class_name Unit
 var battleStatusLabelScene = preload('res://UI/BattleStatusLabel.tscn')
 onready var statusLabels = $StatusLabels/StatusLabels
 signal death
+signal unitActionDone
 
 var held = false
 var player
 var state = 'store'
-var hp
-var power
-var curPower
+var isAlly = true
+
+
 var id
 var desc
 var level = 1
-var armor = 0
+var tier = 0
+var curStats = {}
+var baseStats = {'armor':0, 'regeneration':0, 'maxHp':1}
 
-var maxHp
 var types = []
 var hasAttacked = false
 var hasDoneRoundEnd = false
@@ -28,8 +30,8 @@ var curTarget = null
 var attackFromPos = null
 
 onready var tween = $Tween
-onready var hpLabel = $HealthRect/HpLabel
-onready var attackLabel = $AttackRect/AttackLabel
+#onready var hpLabel = $HealthRect/HpLabel
+#onready var attackLabel = $AttackRect/AttackLabel
 
 var actionQueue = []
 
@@ -37,13 +39,15 @@ var scalingUp = true
 var baseScale
 var animSpeedRand
  
-enum battleStates {idle, preAttackMove, preAttackStop, attack, postAttack, waiting, roundEnd}
+enum battleStates {idle, preAction, preAttackMove, preAttackStop, attack, postAttack, waiting, roundEnd}
 var battleState = battleStates.idle
 
 var preAttackStopTimer = 0
 
 var hasOnAttack = false
 var nextState = null
+var nextAction = ''
+
 
 var waitTime = 0
 var afterWaitMethod = ''
@@ -119,7 +123,8 @@ func _process(delta):
 			global_position = global_position.move_toward(get_parent().global_position, delta*moveSpeed*2)
 			if global_position == get_parent().global_position:
 				battleState = battleStates.idle
-				turnDone()
+				
+				actionDone()
 		
 	update()
 	pass
@@ -129,6 +134,7 @@ func changeBattleState(newState):
 	
 func setBattleMode(value):
 	if value == true:
+		get_parent().unhighlight()
 		$Type1.hide()
 		$Type2.hide()
 		$AttackIndicator.position = $BattlePowerPos.position
@@ -137,20 +143,25 @@ func setBattleMode(value):
 		$Type2.show()
 		$AttackIndicator.position = $NormalPowerPos.position
 		statuses = {}
+		resetCurStats()
 		updateInfo()
+		
+
 	
 func render(_id, _level = 1):
 	id = _id
 	var data = Global.unitLibrary[_id]
-	hp = data.hp
 	
+	for stat in data.baseStats:
+		#print(str(id,' setting ', stat, ' to ', data.baseStats[stat]))
+		baseStats[stat] = data.baseStats[stat]
+		
+	curStats['hp'] = baseStats['maxHp']
 	types = data.types
-	maxHp = hp
-	power = data.power
+	tier = data.tier
 	
 	desc = data.desc
-	if data.has('armor'):
-		armor = data.armor
+	
 	
 	$Sprite.texture = load(str('res://units/sprites/',id, '.png'))
 	
@@ -165,38 +176,52 @@ func render(_id, _level = 1):
 	while (_level > 1):
 		levelUp(false)
 		_level -= 1
+	resetCurStats()
 	updateInfo()
 	
-func _draw():
-	if attackFromPos != null:
-		draw_line(Vector2(0,0), attackFromPos - global_position, Color(1,0.5,0.5), 3)
-
-func levelUp(emitParticles = false):
-	level+=1
-	hp*=2
-	maxHp*=2
+func resetCurStats():
+	for stat in baseStats:
+		if baseStats.has(stat):
+			curStats[stat] = baseStats[stat]
+		else:
+			curStats[stat] = 0
 	
-	power*=2
+func _draw():
+	if curTarget != null:
+		var mult
+		if !isAlly:
+			mult = -1
+		
+	pass
+	
+func levelUp(emitParticles = false, hpMissing = 0):
+	level+=1
+	for stat in baseStats:
+		baseStats[stat] = baseStats[stat]*2
+	
+	resetCurStats()
+	
 	$CombineParticles.emitting = true
 	$Sprite.scale *= 1.5
 	$MoveParticles.scale = $Sprite.scale
 	baseScale = $Sprite.scale
+	curStats.hp = baseStats.maxHp
 	updateInfo()
 	
 	
 func updateInfo(hpAnimation = 'none'):
 	
-
-	$HealthIndicator.setHp(hp, maxHp, hpAnimation)
-	$HealthIndicator.setPower(power)
+	#print(id + ' cur power: '+str(curStats['power']))
+	
+	$HealthIndicator.setPower(curStats['power'])
+	var hbUpdate = {'hp':curStats['hp'], 'armor':curStats.armor}
 	if statuses.has('poison'):
-		$HealthIndicator.setPoison(statuses['poison'])
+		hbUpdate['poison'] = statuses['poison']
 	else:
-		$HealthIndicator.setPoison(0)
-	var totalArmor = armor
-	if statuses.has('armor'):
-		totalArmor+=statuses['armor']
-	$HealthIndicator.setArmor(totalArmor)
+		hbUpdate['poison'] = 0
+	
+	$HealthIndicator.setValues(hbUpdate, curStats.maxHp)
+	
 	for status in statuses:
 		var labelNode
 		if !is_instance_valid(statusLabels.get_node(status)):
@@ -205,87 +230,137 @@ func updateInfo(hpAnimation = 'none'):
 			newLabel.name = status
 			if Global.keywords[status].has('color'):
 				newLabel.modulate = Global.keywords[status].color
+			elif Global.elementLibrary[status].has('color'):
+				newLabel.modulate = Global.elementLibrary[status].color
 			labelNode = newLabel
 		else:
 			labelNode = statusLabels.get_node(status)
-		labelNode.text = str(status, ' ', statuses[status])
+		if curStats.has(status):
+			labelNode.text = str(status, ' +', statuses[status])
+		else:
+			labelNode.text = str(status, ' ', statuses[status])
+		if statuses[status] == 0:
+			labelNode.hide()
 	
 		
 
 
 func setEnemy():
+	
 	scale.x *=-1
 	$MoveParticles.scale.x =1
 	$HealthIndicator.set_scale(Vector2($HealthIndicator.get_scale().x*-1, 1))
 	$HealthIndicator.flipped = true
 	$StatusLabels.scale.x*=-1
-	$StatusLabels.global_position.x += 20* abs(scale.x)
+	$StatusLabels.global_position.x += 40* abs(scale.x)
 	$AttackIndicator.setFlipped()
+	isAlly = false
 	#$StatusLabels.position.x 
 	#$AttackRect.set_scale(Vector2($AttackRect.get_scale().x*-1,1))
 	
 func waitAnd(time, afterMethod, args = []):
-	print(id+ ' wait and')
+	#print(id+ ' wait and')
 	waitTime = time
 	battleState = battleStates.waiting
 	afterWaitMethod = afterMethod
 	afterWaitArgs = args
 	
 	
-func randomTarget(enemyArray):
+func randomTarget():
+	var enemyArray = getEnemies()
 	var rand = Global.rng.randi_range(0,enemyArray.size()-1)
 	
 	return enemyArray[rand]
 	
-func attack(enemyArray):
-	print(id, ' attacking enemy')
-	curTarget = randomTarget(enemyArray)
-	$MoveParticles.emitting = true
-	battleState = battleStates.preAttackMove
+func getEnemies():
+	if isAlly:
+		return battle.enemies
+	else:
+		return battle.allies
+	
+func preAction(actionType):
+	
+	print('	'+id+ ' PRE prepping action: '+actionType)
+	
+	
+	match actionType:
+		'attack':
+			curTarget = randomTarget()
+			get_parent().highlight()
+			get_parent().targetHighlight(curTarget.get_parent())
+			
+			
+		'poison':
+			if !statuses.has('poison'):
+				
+				return
+			if statuses['poison'] <= 0:
+				
+				return
+			get_parent().highlight(Color(Global.keywords.poison.color))
+		_:
+			return
+			
+	nextAction = actionType
+	battleState = battleStates.preAction
+	print('	'+id+ ' prepping action: '+actionType)
+	battle.addActionTaker(self)
+		
+	
+func startAction():
+	print('	'+id +' starting nextAction '+ nextAction)
+	if nextAction == 'attack':
+		
+		if isAlly:
+			$MoveParticles.emitting = true
+		battleState = battleStates.preAttackMove
+	if nextAction == 'poison':
+		takeDamage(statuses['poison'], 'poison')
+		statuses['poison'] -= 1
+			
+		updatePoisonParticles()
+		waitAnd(1, 'actionDone')
+	nextAction = ''
+		
+func actionDone():
+	
+	get_parent().unhighlight()
+	if curTarget != null:
+		curTarget.get_parent().unhighlight()
+	curTarget = null
+	
+	emit_signal('unitActionDone')
+	print('	'+id+' actionDone')
+	
 	
 func attackAction():
-	var prop = float(power) / float(Global.avgStats.power)
+	var prop = float(curStats['power']) / float(Global.avgStats.power)
 	$HitAudio.volume_db = min(-10 + 9*prop, 25)
 	
 	$HitAudio.play()
 	$MoveParticles.emitting = false
-	curTarget.takeDamage(power)
+	curTarget.takeDamage(curStats['power'])
 	
 	pass
 
-func turnDone():
+
 	
-	if battle.waitingOnUnit:
-		print(id, ' turn done, next action!!!')
-		battle.nextAction()
-	else: 
-		print(id, ' tried to call next action battle is not waiting!!!')
 
 
 	
 	
 func takeDamage(amount, animation = 'chunk'):
-	
-	if getTotalArmor() > 0:
+	if curStats['armor'] > 0:
 		Global.playAudio('armor', -5, 0.06)
-		amount -= getTotalArmor()
-	hp-= amount
-	if hp <= 0:
+		amount -= curStats['armor']
+	curStats['hp']-= amount
+	if curStats['hp'] <= 0:
 		die()
 	updateInfo(animation)
 	
-func getTotalArmor():
-	var totalArmor = armor
-	if statuses.has('armor'):
-		totalArmor+=statuses['armor']
-	return totalArmor
-	
-func getTotalPower():
-	var total = power
-	if statuses.has('power'):
-		total+=statuses['power']
-	return total
-		
+
+
+
 func die():
 	
 	emit_signal("death")
@@ -300,40 +375,21 @@ func onAttack():
 	
 	pass
 	
-func roundEnd():
-	if statuses.has('poison'):
-		actionQueue.append('poison')
-		
-		
-	executeActionQueue()
-	
-func executeActionQueue():
-	if actionQueue.size() == 0:
-		print(id+' no actions in queue')
-		turnDone()
-	else:
-		print(str(id,' executing action queue: ',actionQueue))
-		var actionWait = 0.5
-		if actionQueue[0] == 'poison':
-			
-			takeDamage(statuses['poison'])
-			statuses['poison'] -= 1
-			
-			
-			if statuses['poison'] <= 0:
-				statuses.erase('poison')
-			updatePoisonParticles()
-		actionQueue.remove(0)
-		
-		waitAnd(actionWait, 'executeActionQueue')
-	pass
+
+
+
 	
 func applyEffect(effectName, amount, target):
 	target.recieveEffect(effectName, amount)
 	pass
 
 func recieveEffect(effectName, amount):
-	print(id + 'recieving ' + effectName)
+	#print(id + 'recieving ' + effectName)
+	
+		
+	if curStats.has(effectName):
+		curStats[effectName]+=amount
+	
 	if statuses.has(effectName):
 		statuses[effectName] += amount
 	else:
@@ -352,7 +408,7 @@ func updatePoisonParticles(alwaysShowMain = false):
 	if !statuses.has('poison'):
 		poisonProp = 0
 	else:
-		poisonProp = float(statuses['poison']) / maxHp
+		poisonProp = float(statuses['poison']) / baseStats['maxHp']
 	$PoisonParticles.amount = CustomFormulas.proportion(10, 40, poisonProp)
 	$PoisonParticles.emitting = true
 	if statuses.has('poison'):

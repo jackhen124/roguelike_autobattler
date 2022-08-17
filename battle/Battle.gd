@@ -4,6 +4,9 @@ extends Node2D
 # Declare member variables here. Examples:
 # var a = 2
 # var b = "text"
+signal startNextAction
+signal preAction
+
 var allies = []
 var enemies = []
 var allyModifiers = {}
@@ -27,15 +30,22 @@ enum states {intro, battleStart, movingTogether, attack, roundEnd}
 var state = states.intro
 var lastState
 
+
+var waitingForActionClick = false
+
 var waitTime = 0
 var afterWaitMethod = ''
 var afterWaitArgs = []
 
-var waitingOnUnit = false
+var curActionTaker = null
+var actionTakers = []
 
 var playerVictory = false
 
 var lootItems = []
+
+const roundEndOrder = ['lunar', 'individual', 'poison']
+var roundEndIndex = 0
 # Called when the node enters the scene tree for the first time.
 func _ready():
 	addLoot('coins', 5)
@@ -101,19 +111,23 @@ func start():
 	for ally in allies:
 		ally.battle = self
 		ally.connect('death', self, 'removeAlly', [ally])
+		ally.connect('unitActionDone', self, 'unitActionDone', [ally])
+		connect('preAction', ally, 'preAction')
+		
 		ally.player = player
 		ally.setBattleMode(true)
 		ally.updateInfo()
 		
-		#ally.allies = allies
-		#ally.enemies = allies
+		
 		pass
 	for enemy in enemies:
 		enemy.battle = self
 		enemy.setBattleMode(true)
+		enemy.connect('death', self, 'removeEnemy', [enemy])
+		enemy.connect('unitActionDone', self, 'unitActionDone', [enemy])
+		connect('preAction', enemy, 'preAction')
 		enemy.updateInfo()
-		#enemy.allies = enemies
-		#enemy.enemies = allies
+		
 		pass
 	
 	var diff = $AlliesPos.global_position - $EnemiesPos.global_position
@@ -142,75 +156,101 @@ func onIntroCompleted():
 
 
 
-	
+
+
+
 	
 func nextAction():
+	
 	#print('	next action! allyTurn: '+str(allyTurn))
 	if !battleOver:
-		waitingOnUnit = false
-		var nextAttacker
-		if alliesDone && enemiesDone:
-			#print('all units done - action phase done with '+ states.keys()[state])
-			nextState()
-			return
-		elif alliesDone:
-			allyTurn = false
-		elif enemiesDone:
-			allyTurn = true
-		if allyTurn:
-			
-			nextAttacker = getNextActionTaker(allies)
-			#print('	next attacker: ',nextAttacker)
-			if nextAttacker != null:
-				#print('	calling for ally action')
-				takeAction(nextAttacker)
-				allyTurn = false
+		if state == states.attack:
+			var nextAttacker
+			if alliesDone && enemiesDone:
+				#print('all units done - action phase done with '+ states.keys()[state])
+				nextState()
 				return
-			else:
-				#print('	all allies are done...')
-				alliesDone = true
+			elif alliesDone:
 				allyTurn = false
+			elif enemiesDone:
+				allyTurn = true
+			if allyTurn:
+				
+				nextAttacker = getNextActionTaker(allies)
+				#print('	next attacker: ',nextAttacker)
+				if nextAttacker != null:
+					#print('	calling for ally action')
+					prepAction(nextAttacker)
+					allyTurn = false
+					return
+				else:
+					#print('	all allies are done...')
+					alliesDone = true
+					allyTurn = false
+					nextAction()
+					return
+			else:
+				
+				nextAttacker = getNextActionTaker(enemies)
+				if nextAttacker != null:
+					#print('	calling for enemy action')
+					prepAction(nextAttacker)
+					allyTurn = true
+					return
+				else:
+					#print('	all enemies are done...')
+					allyTurn = true
+					enemiesDone = true
+					nextAction()
+					return
+		elif state == states.roundEnd:
+			if roundEndIndex >= roundEndOrder.size():
+				roundEndIndex = 0
+				nextState()
+				return
+			match roundEndOrder[roundEndIndex]:
+				'lunar':
+					
+					emit_signal('preAction', 'lunar')
+				'poison':
+					emit_signal('preAction', 'poison')
+			roundEndIndex+=1
+			if actionTakers.size() == 0:
 				nextAction()
 				return
-		else:
-			
-			nextAttacker = getNextActionTaker(enemies)
-			if nextAttacker != null:
-				#print('	calling for enemy action')
-				takeAction(nextAttacker)
-				allyTurn = true
-				return
 			else:
-				#print('	all enemies are done...')
-				allyTurn = true
-				enemiesDone = true
-				nextAction()
-				return
+				waitingForActionClick = true
+			
 	else:
 		print('battle over')
 		#actionPhaseDone()
 		endBattle()
 		
-func takeAction(actionTaker):
-	waitingOnUnit = true
+func prepAction(actionTaker, actionName = 'attack'):
+	print('prepping next action for : ',actionTaker.id)
+	waitingForActionClick = true
+	
 	if state == states.attack:
 		#print(actionTaker.id + ' taking next action: attack')
 		actionTaker.hasAttacked = true
 
-		var target
-		if allyTurn:
-			target = enemies
-		else:
-			target = allies
-		actionTaker.attack(target)
-	elif state == states.roundEnd:
-		#print(actionTaker.id + ' taking next action: roundEnd')
-		actionTaker.hasDoneRoundEnd = true
-
-
-		actionTaker.roundEnd()
+		actionTaker.preAction('attack')
+	
+		
+func addActionTaker(unit):
+	#this is called by unit in preAction, only if the action actually needs to be done
+	actionTakers.append(unit)
+	connect('startNextAction', unit, 'startAction', [], CONNECT_ONESHOT)
+	print('adding action taker: '+unit.id)
+		
+func unitActionDone(unit):
+	actionTakers.erase(unit)
+	#print(unit.id+' done with action! actiontakers left: '+str(actionTakers))
+	if actionTakers.size() <= 0:
+		nextAction()
 
 func nextState():
+	print(str('ending battleState: ',states.keys()[state]))
 	lastState = state
 	if state == states.intro:
 		state = states.battleStart
@@ -221,6 +261,7 @@ func nextState():
 		pass
 	elif state == states.movingTogether:
 		state = states.attack
+		$CanvasLayer/RoundLabel.show()
 		$CanvasLayer/RoundLabel.text = str('Round ', roundNum)
 		nextAction()
 	
@@ -235,19 +276,18 @@ func nextState():
 	elif state == states.roundEnd:
 		#print('roundEnd phase over')
 		roundNum +=1
+		$CanvasLayer/RoundLabel.text = str('Round ', roundNum)
 		print('round: ', roundNum)
 		alliesDone = false
 		enemiesDone = false
 		allyTurn = true
 		for unit in allies:
 			unit.hasAttacked = false
-			unit.hasDoneRoundEnd = false
 		for unit in enemies:
 			unit.hasAttacked = false
-			unit.hasDoneRoundEnd = false
 		state = states.attack
 		nextAction()
-	print(str('battle state change: ',states.keys()[lastState], ' >>> ', states.keys()[state]))
+	
 		
 	pass
 
@@ -264,6 +304,7 @@ func getNextActionTaker(unitArray):
 			
 				if !unit.hasDoneRoundEnd:
 					return unit
+	
 	return result
 	
 func waitAnd(time, afterMethod, args = []):
@@ -290,18 +331,22 @@ func addUnit(group, unitId, unitLevel = 1):
 	
 func endBattle():
 	battleOver = true
+	if enemies.size() > 0:
+		$CanvasLayer/VictoryScreen/Label.text = 'defeat'
+		lootItems = []
 	showVictoryScreen()
+	$CanvasLayer/RoundLabel.hide()
 	#player.afterBattle()
 	print('battle over')
 	pass
 	
 func addAlly(unitId, unitLevel = 1):
 	var newAlly = addUnit($TestAllySpots, unitId, unitLevel)
-	newAlly.connect('death', self, 'removeAlly', [newAlly])
+	#newAlly.connect('death', self, 'removeAlly', [newAlly])
 	
 func addEnemy(unitId, unitLevel = 1):
 	var newEnemy = addUnit($EnemySpots, unitId, unitLevel)
-	newEnemy.connect('death', self, 'removeEnemy', [newEnemy])
+	#newEnemy.connect('death', self, 'removeEnemy', [newEnemy])
 	newEnemy.setEnemy()
 	
 func removeAlly(unit):
@@ -341,7 +386,9 @@ func generateEnemies(difficulty):
 			level = 1
 		
 		if Global.game.debug:
-			addEnemy('elephant')
+			addEnemy('skunk')
+			addEnemy('skunk')
+			addEnemy('skunk')
 		else:
 			addEnemy(randUnitIndex)
 	$EnemySpots.update()
@@ -355,12 +402,12 @@ func applyTeamModifiers(team):
 	else:
 		targetTeam = enemies
 		mods = enemyModifiers
-	print(mods.size())
+	print('mods.size() ',str(mods.size()))
 	for mod in mods:
-		
+		print('applying mod: ',mod)
 		for unit in targetTeam:
 			unit.recieveEffect(mod, mods[mod])
-		mods.erase(mod)
+	mods = {}
 
 
 
@@ -412,5 +459,17 @@ func addLoot(lootName, amount):
 
 func _on_ContinueButton_pressed():
 	$CanvasLayer/VictoryScreen.hide()
+	if enemies.size() > 0:
+		get_tree().reload_current_scene()
 	player.afterBattle()
 	pass # Replace with function body.
+
+func _input(event):
+	if event.is_action_pressed("left_click"):
+		if waitingForActionClick:
+			print('action click received')
+			emit_signal('startNextAction')
+			waitingForActionClick = false
+			
+			
+	#if even

@@ -4,10 +4,12 @@ extends Node2D
 # Declare member variables here. Examples:
 # var a = 2
 # var b = "text"
+export var drawHorizontal = false
 var color = Color(1,1,1)
 var hbWidth = 15
 var hbHeight = 75
 var powerHeight = 10
+var powerPos = null
 
 var olPoints = []
 var hPoints = []
@@ -26,22 +28,26 @@ var curAnimation = 'none'
 var chunkPoints = []
 var flipped = false
 
-var poison = 0
-var poisonPoints = []
-
-var armor = 0
-var armorPoints = []
+var points = {}
 
 
+
+var curHeights = null
+var targetHeights = null
+
+var changing = []
+var copyData
 # Called when the node enters the scene tree for the first time.
 func _ready():
 	
-	setPoints()
+	#setPoints()
 	$HpLabel.add_color_override("font_color", Color(1,1,1,1))
+	$Power/PowerLabel.add_color_override("font_color", Color(1,1,1,1))
+	$Power/Sprite.modulate = Color(Global.keywords.power.color)
 	pass # Replace with function body.
 
 func _process(delta):
-	if curAnimation == 'chunk':
+	if curAnimation == 'chunk' || curAnimation == 'poison':
 		oldColor.a -= delta*0.85
 		for i in range(chunkPoints.size()):
 			if !flipped:
@@ -51,13 +57,150 @@ func _process(delta):
 			
 			if oldColor.a <= 0:
 				curAnimation = 'none'
+				
 	update()
+	
+func copyValues(copy):
+	points = copy.points
+	maxHp = copy.maxHp
+	updateHbWidth(maxHp)
+	
+func setValues(data, maxHp, targetOrCur = 'cur'):
+	
+	$HpLabel.text = str(data.hp)
+	updateHbWidth(maxHp)
+	
+	var firstSet = false
+	if points.size() == 0:
+		firstSet = true
+	for i in data:
+		if firstSet:
+			points[i] = {'target':{}, 'cur':{}}
+		var height = getHeightBasedOnHp(data[i])
+		points[i][targetOrCur]['height'] = height
+	
+	
+	setPoints(targetOrCur)
+	color = CustomFormulas.redToGreen(float(data.hp) / float(maxHp))
+	$BgSprite.modulate = color.darkened(0.3)
+	
+func setPoints(targetOrCur):
+	for type in points:
+		var upperY
+		var lowerY
+		
+		if type == 'armor':
+			upperY = -abs(points['hp'][targetOrCur]['height'])
+			lowerY = upperY + points['armor'][targetOrCur]['height']
+			
+		elif type == 'hp':
+			upperY = -abs(points['hp'][targetOrCur]['height'])
+			lowerY = 0
+		elif type == 'poison':
+			upperY = -abs(points['hp'][targetOrCur]['height'])
+			lowerY = upperY + points['poison'][targetOrCur]['height']
+			
+			
+		points[type][targetOrCur]['upper'] = upperY
+		points[type][targetOrCur]['lower']= lowerY
+		
+func updateHbWidth(_maxHp):
+	maxHp = _maxHp
+	
+	if Global.avgStats.hp > 0:
+		var hpRatio = float(maxHp) / float(Global.avgStats.hp)
+		
+		hbWidth =  14*hpRatio
+	
+	olPoints = [] + generatePointArray(0, hbHeight)
+	
+func generatePointArray(lowerY, height, offset = 0, width = hbWidth):
+	var xOffset = nearestEven(float(width) /2)
+	
+	var lowerLeft = Vector2(-xOffset-offset, lowerY)
+	var lowerRight = Vector2(xOffset+offset, lowerY)
+	var upperY = lowerY - height
+	var upperLeft = Vector2(-xOffset-offset, upperY-offset)
+	var upperRight = Vector2(xOffset+offset, upperY-offset)
+	return [lowerLeft, lowerRight, upperRight, upperLeft]
+	pass
 
+func nearestEven(num):
+	var result = int(round(num))
+	if result % 2 != 0:
+		if result > num:
+			result -=1
+		else:
+			result +=1
+	return result
+	
+func getHeightBasedOnHp(value):
+	var prop = float(value) / float(maxHp)
+	var hY = CustomFormulas.proportion(0, hbHeight, prop)
+	return hY
+		
+func _draw():
+	
+	draw_colored_polygon(olPoints, Color(0,0,0,0.4))
+	
+	var hpPoints = [] + generatePointArray(points['hp']['cur']['lower'], points['hp']['cur']['height'])
+	draw_colored_polygon(hpPoints, color)
+	var olColor
+	var w
+	
+	if points.poison.cur.height > 0:
+		olColor = Color(Global.keywords.poison.color)#.darkened(0.5)
+		w = 4
+		var pHeight = points['poison']['cur']['height']
+		var pLower = points['poison']['cur']['lower']
+		
+		var pPoints = []+generatePointArray(pLower, pHeight, -1)
+		
+		#draw_colored_polygon(pPoints, Global.keywords.poison.color)
+		
+		draw_line(pPoints[0], pPoints[1], olColor, w)
+		draw_line(pPoints[1],pPoints[2], olColor, w)
+		draw_line(pPoints[2], pPoints[3], olColor, w)
+		draw_line(pPoints[3], pPoints[0], olColor, w)
+	
+	#OUTLINE
+	olColor = color.darkened(0.6)
+	w = 2
+	draw_line(olPoints[0], olPoints[1], olColor, w)
+	draw_line(olPoints[1], olPoints[2], olColor, w)
+	draw_line(olPoints[2], olPoints[3], olColor, w)
+	draw_line(olPoints[3], olPoints[0], olColor, w)
+	
+	if points['armor']['cur']['height'] > 0:
+		olColor = Color(Global.keywords.armor.color)#.darkened(0.5)
+		var armorHeight = points['armor']['cur']['height']
+		var armorLower = points['armor']['cur']['lower']
+		
+	
+		var armorPoints = []+generatePointArray(armorLower, armorHeight,4)
+		
+		#draw_colored_polygon(armorPoints, Global.keywords.armor.color)
+		w = 6
+		#draw_line(armorPoints[0], armorPoints[1], olColor, w)
+		draw_line(armorPoints[1], armorPoints[2], olColor, w)
+		draw_line(armorPoints[2], armorPoints[3], olColor, w)
+		draw_line(armorPoints[3], armorPoints[0], olColor, w)
+	
+	
+	
+	
+# EVERYTHING UNDER IS NO LONGER USED
 func setHp(hp, _maxHp, animation = 'none'):
+	if hp == 0:
+		hp = 0.1
 	var oldHp = curHp
 	curHp = hp
-	maxHp = _maxHp
-	var hpPercent = float(hp-1)/float(maxHp-1)
+	#maxHp = _maxHp
+	var hpPercent
+	#if maxHp <= 1:
+		#hpPercent = 0
+	#else:
+		#hpPercent = float(hp-1)/float(maxHp-1)
 	var r = 0
 	var g 
 	var b = 0.5
@@ -76,95 +219,56 @@ func setHp(hp, _maxHp, animation = 'none'):
 	
 	
 	color = Color(r,g,b)
-	setPoints()
+	#setPoints()
 	if hp!=oldHp:
 		var lowerY = getHeightBasedOnHp(curHp)
 		var upperY = getHeightBasedOnHp(oldHp)
 		var heightLost = upperY - lowerY
-		if poisonPoints.size() > 0:
-			for i in poisonPoints.size():
-				poisonPoints[i].y += heightLost
-		if armorPoints.size() > 0:
-			for i in armorPoints.size():
-				armorPoints[i].y += heightLost
 		
-		if animation == 'chunk':
-			chunkPoints = []
+		
+		if animation == 'chunk' || animation == 'poison':
 			
+			
+			var lowerBy = 0
+			
+			if animation == 'poison':
+				oldColor = Color(Global.keywords.poison.color)
+			chunkPoints = []
+			lowerY -= curHeights['armor'] + curHeights['poison']
+			upperY -= curHeights['armor'] + curHeights['poison']
 			var xOffset = float(hbWidth) / 2.0
 			chunkPoints.append(Vector2(-xOffset, -lowerY))
 			chunkPoints.append(Vector2(xOffset, -lowerY))
 			chunkPoints.append(Vector2(xOffset, -upperY))
 			chunkPoints.append(Vector2(-xOffset, -upperY))
+		
 	curAnimation = animation
 	
+func setNormalPowerPos():
+	pass
+
+func setBattlePowerPos():
+	pass
 
 func setPower(num):
 	power = num
-	var prop = float(power) / float(maxHp)
+	var prop = float(power) / float(1)
 	powerHeight = CustomFormulas.proportion(0, hbHeight, prop)
 	var g = CustomFormulas.proportion(1,0, prop/2.0)
 	powerColor = Color(1,1,0)
 	powerColor.g = g
 	var darkness = CustomFormulas.proportion(0,0.8, prop/3.0)
 	powerColor = powerColor.darkened(darkness)
+	$Power/PowerLabel.text = str(num)
+	
 	setPowerPoints()
 	
-func setPoison(num):
-	if num == poison:
-		return
-	
-	poison = num
-	call_deferred('setPoisonPoints', num)
-	
-		
-func setPoisonPoints(num):
-	poisonPoints = []
-	if poison > 0:
-		var p2 = Vector2(hPoints[2])
-		var p3 = Vector2(hPoints[3])
-		var p0 = p3
-		p0.y += getHeightBasedOnHp(poison)
-		var p1 = p2
-		p1.y += getHeightBasedOnHp(poison)
-		poisonPoints.append(p0)
-		poisonPoints.append(p1)
-		poisonPoints.append(p2)
-		poisonPoints.append(p3)
-		
-		
-func setArmor(num):
-	if num == armor:
-		return
-	armor = num
-	call_deferred('setArmorPoints', num)
-	
-func setArmorPoints(num):
-	armorPoints = []
-	if armor > 0:
-		var p1 = Vector2(hPoints[2])
-		var p0 = Vector2(hPoints[3])
-		var p3 = p0
-		p3.y -= getHeightBasedOnHp(armor)
-		var p2 = p1
-		p2.y -= getHeightBasedOnHp(armor)
-		armorPoints.append(p0)
-		armorPoints.append(p1)
-		armorPoints.append(p2)
-		armorPoints.append(p3)
-	
-func getHeightBasedOnHp(value):
-	var prop = float(value) / float(maxHp)
-	var hY = CustomFormulas.proportion(0, hbHeight, prop)
-	return hY
-	
 
-
-func setPoints():
+func setPointsOld():
 	if Global.avgStats.hp > 0:
 		var hpRatio = float(maxHp) / float(Global.avgStats.hp)
 		
-		hbWidth =  13*hpRatio
+		hbWidth =  15*hpRatio
 	else:
 		hbWidth = 15
 	var xOffset = float(hbWidth)/ 2.0
@@ -182,6 +286,26 @@ func setPoints():
 	var hY = CustomFormulas.proportion(0, hbHeight, prop)
 	hPoints.append(Vector2(xOffset, -hY))
 	hPoints.append(Vector2(-xOffset, -hY))
+	
+func setPowerPointsNewUnused():
+	
+	var xOffset = float(powerHeight)/2.0
+		
+	var yOffset = float(hbWidth)/ 2.0
+	
+	
+	powerPoints = []
+	
+	powerPoints.append(Vector2(-xOffset, yOffset))
+	powerPoints.append(Vector2(xOffset, yOffset))
+	powerPoints.append(Vector2(xOffset, -yOffset))
+	powerPoints.append(Vector2(-xOffset, -yOffset))
+	for i in powerPoints.size():
+		var mult = 1
+		if flipped:
+			mult = -1
+		powerPoints[i].x-= ((hbWidth) * mult)
+	
 
 func setPowerPoints(growDir = 'both'):
 	
@@ -208,23 +332,23 @@ func setPowerPoints(growDir = 'both'):
 		for i in powerPoints.size():
 			powerPoints[i].y -= yOffset
 		
+		
 
-func _draw():
+
+func _drawOld():
 	var w = 2
 	var olColor = color.darkened(0.5)
 	
 	#black background
 	draw_colored_polygon(olPoints, Color(0,0,0,0.4))
 	
-	if curAnimation == 'chunk':
-		
-		draw_colored_polygon(chunkPoints, oldColor)
+	
 	
 	# current health
 	draw_colored_polygon(hPoints, color)
 	# POISON
-	if poisonPoints.size() > 0:
-		draw_colored_polygon(poisonPoints, Global.keywords.poison.color)
+	#if poisonPoints.size() > 0:
+		#draw_colored_polygon(poisonPoints, Global.keywords.poison.color)
 	# HEALTHBAR OUTLINE
 	olColor = color.darkened(0.5)
 	draw_line(olPoints[0], olPoints[1], olColor, w)
@@ -232,21 +356,26 @@ func _draw():
 	draw_line(olPoints[2], olPoints[3], olColor, w)
 	draw_line(olPoints[3], olPoints[0], olColor, w)
 	# ARMOR
-	if armorPoints.size() > 0:
+	#if armorPoints.size() > 0:
+	if true:#armor
 		olColor = Color(Global.keywords.armor.color).darkened(0.5)
 		
-		draw_colored_polygon(armorPoints, Global.keywords.armor.color)
-		draw_line(armorPoints[0], armorPoints[1], olColor, w)
-		draw_line(armorPoints[1], armorPoints[2], olColor, w)
-		draw_line(armorPoints[2], armorPoints[3], olColor, w)
-		draw_line(armorPoints[3], armorPoints[0], olColor, w)
-	if powerPoints.size() > 0:
-		olColor = powerColor.darkened(0.5)
-		draw_colored_polygon(powerPoints, powerColor)
-		draw_line(powerPoints[0], powerPoints[1], olColor, w)
-		draw_line(powerPoints[1], powerPoints[2], olColor, w)
-		draw_line(powerPoints[2], powerPoints[3], olColor, w)
-		draw_line(powerPoints[3], powerPoints[0], olColor, w)
+		#draw_colored_polygon(armorPoints, Global.keywords.armor.color)
+		#draw_line(armorPoints[0], armorPoints[1], olColor, w)
+		#draw_line(armorPoints[1], armorPoints[2], olColor, w)
+		#draw_line(armorPoints[2], armorPoints[3], olColor, w)
+		#draw_line(armorPoints[3], armorPoints[0], olColor, w)
+		
+	if curAnimation == 'chunk' || curAnimation == 'poison':
+		if chunkPoints.size() >= 4:
+			draw_colored_polygon(chunkPoints, oldColor)
+	#if powerPoints.size() > 0:
+		#olColor = powerColor.darkened(0.5)
+		#draw_colored_polygon(powerPoints, powerColor)
+		#draw_line(powerPoints[0], powerPoints[1], olColor, w)
+		#draw_line(powerPoints[1], powerPoints[2], olColor, w)
+		#draw_line(powerPoints[2], powerPoints[3], olColor, w)
+		#draw_line(powerPoints[3], powerPoints[0], olColor, w)
 	
 
 

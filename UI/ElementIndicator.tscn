@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=2]
+[gd_scene load_steps=4 format=2]
 
 [ext_resource path="res://types/sprites/aquatic.png" type="Texture" id=1]
 [ext_resource path="res://UI/ElementIndicator.gd" type="Script" id=2]
+[ext_resource path="res://resources/ind_circle.png" type="Texture" id=3]
 
 [node name="ElementIndicator" type="Control"]
 anchor_left = 0.470703
@@ -9,11 +10,53 @@ anchor_top = 0.447917
 anchor_right = 0.529297
 anchor_bottom = 0.552083
 rect_min_size = Vector2( 60, 60 )
+rect_pivot_offset = Vector2( 37.5001, 37.4998 )
 mouse_filter = 2
 script = ExtResource( 2 )
 __meta__ = {
 "_edit_use_anchors_": false
 }
+
+[node name="SynergyTiers" type="VBoxContainer" parent="."]
+anchor_left = 0.5
+anchor_right = 0.5
+margin_left = -21.0
+margin_top = -120.5
+margin_right = 19.0
+margin_bottom = 7.49976
+mouse_filter = 2
+custom_constants/separation = -6
+alignment = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="3" type="TextureRect" parent="SynergyTiers"]
+margin_top = 20.0
+margin_right = 40.0
+margin_bottom = 60.0
+rect_min_size = Vector2( 40, 40 )
+mouse_filter = 2
+texture = ExtResource( 3 )
+expand = true
+
+[node name="2" type="TextureRect" parent="SynergyTiers"]
+margin_top = 54.0
+margin_right = 40.0
+margin_bottom = 94.0
+rect_min_size = Vector2( 40, 40 )
+mouse_filter = 2
+texture = ExtResource( 3 )
+expand = true
+
+[node name="1" type="TextureRect" parent="SynergyTiers"]
+margin_top = 88.0
+margin_right = 40.0
+margin_bottom = 128.0
+rect_min_size = Vector2( 40, 40 )
+mouse_filter = 2
+texture = ExtResource( 3 )
+expand = true
 
 [node name="TextureButton" type="Button" parent="."]
 modulate = Color( 1, 1, 1, 0 )
@@ -26,6 +69,9 @@ anchor_bottom = 1.0
 mouse_filter = 2
 texture = ExtResource( 1 )
 expand = true
+__meta__ = {
+"_edit_use_anchors_": false
+}
 
 [connection signal="mouse_entered" from="TextureButton" to="." method="_on_TextureButton_mouse_entered"]
 [connection signal="mouse_exited" from="TextureButton" to="." method="_on_TextureButton_mouse_exited"]

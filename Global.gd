@@ -37,7 +37,7 @@ const keywords = {
 	'poison':{
 		'type': 'debuff',
 		'desc':"ROUND-END: take damage equal to poison stacks remove 1 stack",
-		'color':'#ab00ff'
+		'color':'#cf6eff'
 	},
 	'triumph':{
 		'type': 'trigger',
@@ -68,17 +68,17 @@ const keywords = {
 	'on-attack':{
 		
 		'desc': "Triggers an effect when this unit attacks",
-		'color':''
+		
 	},
 	'on-guard':{
 		
 		'desc': "Triggers an effect when this is attacked",
-		'color':''
+		
 	},
 	'round-end':{
 		
 		'desc': "Triggers an effect each time all units have attacked",
-		'color':''
+		
 	},
 	
 	
@@ -87,43 +87,51 @@ const elementLibrary = {
 	'aquatic':{
 		'desc':'if you have unitsNeeded unique aquatic units, reduce all enemies attack by effectPerStack',
 		'unitsNeeded': [2,4,6],
-		'effectPerStack':[1,2,3],
+		'effectPerStack':[-1,-2,-3],
+		
 		'color':'#638bff'
 	},
 	'earthen':{
 		'desc':'if you have unitsNeeded unique earthen units, grant all allies + effectPerStack armor',
 		'unitsNeeded': [2,4,6],
 		'effectPerStack':[1,2,3],
+		
 		'color':'#c09b7b'
 	},
 	'floral':{
 		'desc':'if you have unitsNeeded unique floral units, grant all allies + effectPerStack regeneration',
 		'unitsNeeded': [2,4,6],
 		'effectPerStack':[1,2,3],
+		
+		
 		'color':'#5dfd82'
 	},
 	'glacial':{
 		'desc':'if you have unitsNeeded unique glacial units, chill a random enemy effectPerStack times at the start of battle',
 		'unitsNeeded': [2,4,6],
 		'effectPerStack':[2,5,9],
+		'effectedTeam':'enemies',
 		'color':'#c2f2ff'
 	},
 	'toxic':{
 		'desc':'if you have unitsNeeded unique toxic units, whenever an enemy recieves damage they also gain effectPerStack stacks of poison',
 		'unitsNeeded': [3,6],
 		'effectPerStack':[1,2],
+		'effectedTeam':'enemies',
 		'color':'#cf6eff'
 	},
 	'lunar':{
 		'desc':'if you have unitsNeeded unique lunar units, all allies gain effectPerStack power at the end of each round',
 		'unitsNeeded': [2,4,6],
 		'effectPerStack':[2,4,6],
+		'effectedTeam':'allies',
 		'color':'#000000'
 	},
 	'solar':{
 		'desc':'if you have unitsNeeded unique solar units, your first effectPerStack units attack before the battle starts',
 		'unitsNeeded': [2,4,7],
 		'effectPerStack':[1,2,4],
+		'effectedTeam':'allies',
 		'color':'#ffe552'
 	},
 	
@@ -133,88 +141,98 @@ const unitLibrary = {
 		'skunk':{
 		
 		'tier':1,
-		'power':3,
-		'hp': 7,
+		'baseStats' : {'power':3, 'maxHp':8},
 		'types':['toxic','floral'],
-		'desc':'on-attack: apply 1 poison to target. on-guard apply 1 poison to attacker'
-		
+		'desc':'on-attack: apply 1 poison to target. on-guard apply 1 poison to attacker',
+		'abilities': {'on-attack':[{'poison': [1,2,4]}]}
 		},
 		'skorpion':{
 		
 		'tier':1,
-		'power':2,
-		'hp': 8,
+		'baseStats' : {'power':2, 'maxHp':6, 'armor':1},
 		'types':['toxic', 'earthen'],
-		'desc':"on-guard: apply poison equal to 1 third of attacker's power"
+		'desc':"on-guard: apply 1 poison"
 		
 		},
 		
 		'snail':{
 		
 		'tier':1,
-		'power':2,
-		'hp': 8,
+		'baseStats' : {'power':2, 'maxHp':8, 'armor':1},
 		'armor':1,
 		'types':['earthen', 'aquatic'],
-		'desc':"armor:1"
+		'desc':"armor: 1"
+		
+		},
+		'rat':{
+		'baseStats' : {'power':2, 'maxHp':8},
+		'tier':1,
+		
+		'types':['floral', 'solar'],
+		'desc':"on-attack: gain 1 power. triumph: heal 1"
 		
 		},
 	##################### Tier 2 ###########################
 		'eagle':{
-		
+		'baseStats' : {'power':5, 'maxHp':9},
 		'tier':2,
-		'power':5,
-		'hp': 9,
+		
 		'types':['solar','lunar'],
 		'desc':'round-end: lose [1,2,4] power. if my attack would be less than 1, lose health instead'
 		},
-		'octopus':{
+		'penguin':{
 		
 		'tier':2,
-		'power':2,
-		'hp': 7,
+		'baseStats' : {'power':2, 'maxHp':8},
+		'types':['glacial','aquatic'],
+		'desc':'round-start: apply slow to a random enemy'
+		},
+		'octopus':{
+		'baseStats' : {'power':2, 'maxHp':8},
+		'tier':2,
+		
 		'types':['aquatic', 'lunar'],
 		'desc':'round-end: deal damage equal to my power to [1/2/4] random enemies'
 		},
 		'snake':{
-		
+		'baseStats' : {'power':3, 'maxHp':8},
 		'tier':2,
-		'power':3,
-		'hp': 8,
+		
 		'types':['solar', 'toxic'],
-		'desc':''
+		'desc':'on-attack: apply 2 poison to target'
 		},
 	##################### Tier 3 ###########################
 		'crocodile':{
 		'tier':3,
-		'power':4,
-		'hp': 11,
+		'baseStats' : {'armor':1,  'power':4, 'maxHp':11},
+		
 		'types':['aquatic','solar'],
-		'desc':"triumph: gain +[1,2,3] power and heal equal to (target's max HP * [0.5, 1, 1.5]' "
+		'desc':"triumph: gain +[1,2,3] power and heal by [2,4,8]' "
 		},
 		'tiger':{
+		'baseStats' : {'power':3, 'maxHp':14},
 		'tier':3,
-		'power':5,
+		'power':3,
 		'hp': 14,
 		'types':['floral','lunar'],
-		'desc':""
+		'desc':"round-end: gain multistrike +1"
 		},
 	##################### Tier 4 ###########################
 		'elephant':{
-		
+		'baseStats' : {'power':5, 'maxHp':12},
 		'tier': 4,
 		'power':5,
 		'hp': 12,
 		'types':['earthen','solar'],
-		'desc':''
+		'desc':'on-attack: gain 1 armor'
 		},
 		'polarbear':{
-		
+		'baseStats' : {'power':4, 'maxHp':15},
 		'tier': 4,
 		'power':5,
-		'hp': 12,
+		'hp': 14,
 		'types':['glacial','solar'],
-		'desc':''
+		'desc':'on-attack: apply [1, 2, 4] slow to target'
 		}
 	}
 
@@ -271,11 +289,11 @@ func updateAverageStats(array2d):
 	var hpSum = 0
 	var divisor = 0
 	for unitArray in array2d:
-		print(unitArray)
+		
 		for unit in unitArray:
-			print('	'+unit.id)
-			powerSum += unit.power
-			hpSum += unit.hp
+			
+			powerSum += unit.curStats['power']
+			hpSum += unit.baseStats['maxHp']
 			divisor+=1
 	if divisor > 0:
 		avgStats['power'] = float(powerSum) / float(divisor)

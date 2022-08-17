@@ -14,5 +14,5 @@ func _ready():
 
 func onAttack():
 	.onAttack()
-	applyEffect('poison', 2, curTarget)
+	applyEffect('poison', 1, curTarget)
 	

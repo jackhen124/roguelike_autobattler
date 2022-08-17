@@ -12,6 +12,13 @@ export var percentVertical = 0
 var minPos
 var maxPos
 
+var synergyTiers = {}
+var typeCounts = {}
+
+
+var enemyEffects = {}
+var allyEffects = {}
+
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
@@ -22,6 +29,7 @@ func _ready():
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta):
+	
 	update()
 	pass
 func updatePositions():
@@ -61,3 +69,49 @@ func getUnits():
 	for spot in get_children():
 		result.append(spot.unit)
 	return result
+	
+func updateSynergies():
+	typeCounts = {}
+	for spot in get_children():
+		if spot.unit != null:
+			
+			for type in spot.unit.types:
+				
+				if !typeCounts.has(type):
+					typeCounts[type] = 1
+				else:
+					typeCounts[type] +=1
+			spot.unit.resetCurStats()
+	for type in typeCounts:
+		synergyTiers[type] = 0
+		var curEffectAmount = 0
+		for tierIndex in Global.elementLibrary[type].unitsNeeded.size():
+			if typeCounts[type] >= Global.elementLibrary[type].unitsNeeded[tierIndex]:
+				curEffectAmount =  Global.elementLibrary[type].effectPerStack[tierIndex]
+				synergyTiers[type] +=1
+		if curEffectAmount > 0:
+		
+			for spot in get_children():
+				if spot.unit != null:
+					match type:
+						'aquatic':
+							enemyEffects['aquatic'] = curEffectAmount
+					match type:
+						'earthen':
+							spot.unit.recieveEffect('armor', curEffectAmount)
+					match type:
+						'solar':
+							allyEffects['solar'] = curEffectAmount
+					match type:
+						'toxic':
+							enemyEffects['toxic'] = curEffectAmount
+					match type:
+						'glacial':
+							enemyEffects['glacial'] = curEffectAmount
+					match type:
+						'lunar':
+							allyEffects['lunar'] = curEffectAmount
+					match type:
+						'floral':
+							spot.unit.recieveEffect('regeneration', curEffectAmount)
+	Global.player.infoPanel.updateSynergies(typeCounts)

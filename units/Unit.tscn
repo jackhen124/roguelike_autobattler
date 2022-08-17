@@ -39,6 +39,7 @@ emitting = false
 one_shot = true
 
 [node name="MoveParticles" type="CPUParticles2D" parent="."]
+modulate = Color( 1, 1, 1, 0.709804 )
 position = Vector2( 1.34146, -18.8311 )
 amount = 9
 lifetime = 0.15
@@ -93,26 +94,6 @@ color = Color( 0.756863, 0.443137, 1, 1 )
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D"]
 shape = SubResource( 2 )
 
-[node name="HealthIndicator" parent="." instance=ExtResource( 5 )]
-position = Vector2( -53.4486, 22.0003 )
-
-[node name="HealthBar2" type="ProgressBar" parent="HealthIndicator"]
-visible = false
-anchor_left = 0.236
-anchor_right = 0.749
-margin_left = -0.841444
-margin_top = -0.172951
-margin_right = 26.2816
-margin_bottom = 15.827
-rect_rotation = -90.0
-custom_styles/fg = SubResource( 3 )
-custom_styles/bg = SubResource( 4 )
-allow_greater = true
-percent_visible = false
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
 [node name="Tween" type="Tween" parent="."]
 
 [node name="Type1" type="TextureRect" parent="."]
@@ -141,6 +122,29 @@ __meta__ = {
 "_edit_use_anchors_": false
 }
 
+[node name="HealthIndicator" parent="." instance=ExtResource( 5 )]
+position = Vector2( -53.4486, 22.0003 )
+
+[node name="PowerPos" type="Position2D" parent="HealthIndicator"]
+position = Vector2( 109.218, 0.778158 )
+
+[node name="HealthBar2" type="ProgressBar" parent="HealthIndicator"]
+visible = false
+anchor_left = 0.236
+anchor_right = 0.749
+margin_left = -0.841444
+margin_top = -0.172951
+margin_right = 26.2816
+margin_bottom = 15.827
+rect_rotation = -90.0
+custom_styles/fg = SubResource( 3 )
+custom_styles/bg = SubResource( 4 )
+allow_greater = true
+percent_visible = false
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
 [node name="HitAudio" type="AudioStreamPlayer" parent="."]
 stream = ExtResource( 8 )
 
@@ -152,6 +156,7 @@ margin_left = -40.9789
 margin_top = -40.3746
 margin_right = 5.02113
 margin_bottom = 38.6254
+mouse_filter = 2
 alignment = 1
 __meta__ = {
 "_edit_use_anchors_": false

@@ -14,6 +14,7 @@ export var debug = false
 func _ready():
 	Global.game = self
 	$StartMenu.connect('started', self, 'start')
+	
 	start()
 	pass # Replace with function body.
 	
@@ -21,9 +22,9 @@ func start():
 	$StartMenu.hide()
 	var newPlayer = playerScene.instance()
 	
-	
-	add_child(newPlayer)
 	Global.player = newPlayer
+	add_child(newPlayer)
+	
 
 func startOld(var numPlayers):
 	$StartMenu.hide()

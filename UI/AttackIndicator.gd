@@ -8,7 +8,7 @@ var baseScale = Vector2(1,1)
 var prop
 var flipped = false
 
-var width = 5
+var width = 10
 var value
 var color = Color(1,1,1)
 var aPoints = []
@@ -26,8 +26,8 @@ func setAttack(num):
 	if num == 0:
 		num = 0.1
 	prop = float(num)/float(Global.avgStats.power)
-	print('attack: '+str(num))
-	print('prop '+ str(prop))
+	#print('attack: '+str(num))
+	#print('prop '+ str(prop))
 	
 		
 	
@@ -38,7 +38,7 @@ func setAttack(num):
 	color = color.darkened(darkness)
 	$Sprite.modulate = color
 	value = num
-	#setPoints()
+	setAttackPoints()
 	#call_deferred('setScale')
 	
 func setScale():
@@ -65,7 +65,7 @@ func setAttackPoints(growDir = 'up'):
 	
 	var yOffset = value*3
 	if Global.avgStats.hp > 0:
-		var aRatio = float(value) / float(Global.avgStats.hp)
+		var aRatio = 1#float(value) / float(Global.avgStats.hp)
 		
 		width =  12*aRatio
 	else:

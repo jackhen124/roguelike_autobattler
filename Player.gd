@@ -27,6 +27,7 @@ var stageNum = 1
 var lineupVertical = false
 onready var lineupStartPos = $LineupSpots.global_position
 
+onready var unitInfoPanel = $Front/UnitInfoPanel
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
@@ -127,8 +128,11 @@ func nextBattle():
 	anima = Anima.begin($GUI)
 	anima.then({property = 'y', to = -offscreenDis, duration = 1, relative = true, on_completed  = [funcref(battle, 'start'), []] })
 	anima.play()
-	
-	
+
+func unitSold(unit):
+	coins+= unit.tier + unit.level-1
+	Global.playAudio('coins')
+	updateInfo()
 	
 func unitDie(unit):
 	var newSpot = addSpot($Graveyard, 'graveyard')
@@ -158,25 +162,35 @@ func updateInfo():
 	$GUI/RerollButton/CoinLabel.setCoins(rerollCost)
 	if rerollCost == 0:
 		$GUI/RerollButton/CoinLabel.setCoins('Free')
-	print(coins)
+
 	coinLabel.setCoins(coins)
 	
 func canMerge(checkUnit):
 	var numOthers = 0
 	for otherUnit in getOwnedUnits():
-		if otherUnit.level == checkUnit.level && otherUnit.id == checkUnit.id:
-			numOthers +=1
-			if numOthers >= 2:
-				return true
+		if otherUnit != checkUnit:
+			
+			if otherUnit.level == checkUnit.level && otherUnit.id == checkUnit.id:
+				numOthers +=1
+				if numOthers >= 2:
+					return true
 	return false
 	
 func merge(checkUnit):
-	
+	var hpMissing = checkUnit.baseStats.maxHp
 	for otherUnit in getOwnedUnits():
-		if otherUnit.level == checkUnit.level && otherUnit.id == checkUnit.id:
-			otherUnit.get_parent().empty(true)
+		if otherUnit != checkUnit:
 			
-	checkUnit.levelUp()
+			if otherUnit.level == checkUnit.level && otherUnit.id == checkUnit.id:
+				hpMissing+=otherUnit.baseStats.maxHp - otherUnit.curStats.hp
+				otherUnit.get_parent().empty(true)
+	
+	checkUnit.levelUp(true, hpMissing)
+	if checkUnit.curStats.hp > checkUnit.curStats.maxHp:
+		checkUnit.curStats.hp = checkUnit.curStats.maxHp
+	if checkUnit.level == 2:
+		if canMerge(checkUnit):
+			merge(checkUnit)
 	
 func getLineupUnits():
 	var lineup = []
@@ -200,7 +214,7 @@ func getOwnedUnits():
 func buyUnit(unit):
 	if Global.unitLibrary[unit.id].tier <= coins:
 		Global.playAudio('coin')
-		print_debug('buying unit')
+		
 		coins-= Global.unitLibrary[unit.id].tier
 		unit.player = self
 		if canMerge(unit):
@@ -210,6 +224,7 @@ func buyUnit(unit):
 		if rerollCost == 0:
 			rerollCost +=1
 		updateInfo()
+		
 
 func addUnit(unitName):
 	var unit = Global.instanceUnit(unitName)
@@ -228,8 +243,7 @@ func getFirstEmptySpot():
 	return null
 				
 	
-func spotHover(spot):
-	infoPanel.spotHover(spot)
+
 	
 func _on_ReadyButton_pressed():
 	nextBattle()
@@ -246,7 +260,7 @@ func _on_RerollButton_pressed():
 	pass # Replace with function body.
 	
 func collectLoot(button):
-	print('collecting loot')
+	
 	if button.type == 'coins':
 		coins+=button.amount
 		Global.playAudio('coin')
