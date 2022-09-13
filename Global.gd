@@ -10,7 +10,7 @@ var spotScene = preload("res://Spot.tscn")
 var unitScene = preload("res://units/Unit.tscn")
 var player
 var game
-
+var stagesPerBiome = 1
 var timer = Timer.new()
 
 var tieredLibrary = []
@@ -18,16 +18,19 @@ var maxTier = 4
 
 var avgStats = {'power':1, 'hp': 1}
 var onScreenUnits = []
+var biomeOrder = []
+var possibleStats = []
 const keywords = {
 	'hp':{
-		'type': 'buff',
+		
 		'desc':"HP represents how much damage a unit can withstand before fainting",
 		'color':'#32e691'
+		#'type':'stat'
 	},
 	'power':{
-		'type': 'buff',
 		'desc':"Power represents damage done when attacking",
-		'color':'#ae4b4f'
+		'color':'#f04d4d',
+		'type':'stat'
 	},
 	'heal':{
 		'type': 'buff',
@@ -35,9 +38,10 @@ const keywords = {
 		'color':'#96ffae'
 	},
 	'poison':{
-		'type': 'debuff',
+		
 		'desc':"ROUND-END: take damage equal to poison stacks remove 1 stack",
-		'color':'#cf6eff'
+		'color':'#cf6eff',
+		'type':'stat'
 	},
 	'triumph':{
 		'type': 'trigger',
@@ -45,20 +49,30 @@ const keywords = {
 		'color':'#e85e47'
 	},
 	'armor':{
-		'type':'buff',
+		
 		'desc': "Reduce all damage taken by 1 per armor",
 		#'color':'#a2a568' # snail colored
-		'color':'#c3d5dd'
+		'color':'#c3d5dd',
+		'type':'stat'
 	},
 	'regeneration':{
-		'type':'buff',
+		
 		'desc': "round-end: heal 1 per regenration",
-		'color':'#27e496'
+		'color':'#27e496',
+		'type':'stat',
+		'abrev':'regen'
+	},
+	'taunt':{
+		
+		'desc': "50% increased chance of being targeted by enemy attacks, per stack of taunt",
+		'color':'#f19220',
+		'type':'stat'
 	},
 	'slow':{
-		'type':'debuff',
+		
 		'desc': "If a unit recieves enough stacks of slow, they are stunned. The amount of stacks needed to stun an enemy increases every time they are stunned",
-		'color':'#c2f2ff'
+		'color':'#c2f2ff',
+		'type':'stat'
 	},
 	'stun':{
 		'type':'debuff',
@@ -143,33 +157,34 @@ const unitLibrary = {
 		'tier':1,
 		'baseStats' : {'power':3, 'maxHp':8},
 		'types':['toxic','floral'],
-		'desc':'on-attack: apply 1 poison to target. on-guard apply 1 poison to attacker',
-		'abilities': {'on-attack':[{'poison': [1,2,4]}]}
+		'desc':'round-end: apply 1 poison to target. on-guard apply 1 poison to attacker',
+		'abilities': {'round-end':[{'stat':'poison', 'amount': [1,2,4], 'target':'randomEnemy'}]}
 		},
 		'skorpion':{
 		
 		'tier':1,
 		'baseStats' : {'power':2, 'maxHp':6, 'armor':1},
 		'types':['toxic', 'earthen'],
-		'desc':"on-guard: apply 1 poison"
-		
+		'desc':"on-attack: apply 1 poison to target",
+		'abilities': {'on-attack':[{'stat':'poison', 'amount': [1,2,4], 'target':'guarding'}]}
 		},
 		
 		'snail':{
 		
 		'tier':1,
-		'baseStats' : {'power':2, 'maxHp':8, 'armor':1},
+		'baseStats' : {'power':2, 'maxHp':8, 'armor':1, 'taunt':1},
 		'armor':1,
 		'types':['earthen', 'aquatic'],
-		'desc':"armor: 1"
-		
+		'desc':"armor: 1",
+		'abilities': {}
 		},
 		'rat':{
-		'baseStats' : {'power':2, 'maxHp':8},
+		'baseStats' : {'power':4, 'maxHp':7},
 		'tier':1,
 		
 		'types':['floral', 'solar'],
-		'desc':"on-attack: gain 1 power. triumph: heal 1"
+		'desc':"on-attack: gain 1 power. triumph: heal 1",
+		'abilities': {}
 		
 		},
 	##################### Tier 2 ###########################
@@ -178,28 +193,32 @@ const unitLibrary = {
 		'tier':2,
 		
 		'types':['solar','lunar'],
-		'desc':'round-end: lose [1,2,4] power. if my attack would be less than 1, lose health instead'
+		'desc':'round-end: lose [1,2,4] power. if my attack would be less than 1, lose health instead',
+		'abilities': {}
 		},
 		'penguin':{
 		
 		'tier':2,
 		'baseStats' : {'power':2, 'maxHp':8},
 		'types':['glacial','aquatic'],
-		'desc':'round-start: apply slow to a random enemy'
+		'desc':'round-start: apply slow to a random enemy',
+		'abilities': {}
 		},
 		'octopus':{
 		'baseStats' : {'power':2, 'maxHp':8},
 		'tier':2,
 		
 		'types':['aquatic', 'lunar'],
-		'desc':'round-end: deal damage equal to my power to [1/2/4] random enemies'
+		'desc':'round-end: deal damage equal to my power to [1/2/4] random enemies',
+		'abilities': {}
 		},
 		'snake':{
 		'baseStats' : {'power':3, 'maxHp':8},
 		'tier':2,
 		
 		'types':['solar', 'toxic'],
-		'desc':'on-attack: apply 2 poison to target'
+		'desc':'on-attack: apply 2 poison to target',
+		'abilities': {}
 		},
 	##################### Tier 3 ###########################
 		'crocodile':{
@@ -207,7 +226,8 @@ const unitLibrary = {
 		'baseStats' : {'armor':1,  'power':4, 'maxHp':11},
 		
 		'types':['aquatic','solar'],
-		'desc':"triumph: gain +[1,2,3] power and heal by [2,4,8]' "
+		'desc':"triumph: gain +[1,2,3] power and heal by [2,4,8]' ",
+		'abilities': {}
 		},
 		'tiger':{
 		'baseStats' : {'power':3, 'maxHp':14},
@@ -215,7 +235,8 @@ const unitLibrary = {
 		'power':3,
 		'hp': 14,
 		'types':['floral','lunar'],
-		'desc':"round-end: gain multistrike +1"
+		'desc':"round-end: gain multistrike +1",
+		'abilities': {}
 		},
 	##################### Tier 4 ###########################
 		'elephant':{
@@ -224,7 +245,8 @@ const unitLibrary = {
 		'power':5,
 		'hp': 12,
 		'types':['earthen','solar'],
-		'desc':'on-attack: gain 1 armor'
+		'desc':'on-attack: gain 1 armor',
+		'abilities': {}
 		},
 		'polarbear':{
 		'baseStats' : {'power':4, 'maxHp':15},
@@ -232,7 +254,8 @@ const unitLibrary = {
 		'power':5,
 		'hp': 14,
 		'types':['glacial','solar'],
-		'desc':'on-attack: apply [1, 2, 4] slow to target'
+		'desc':'on-attack: apply [1, 2, 4] slow to target',
+		'abilities': {}
 		}
 	}
 
@@ -243,7 +266,11 @@ func _ready():
 	timer.one_shot = true
 	rng.randomize()
 	randomize()
-	
+	generateBiomeOrder()
+	for keyword in keywords:
+		if keywords[keyword].has('type'):
+			if keywords[keyword]['type'] == 'stat':
+				possibleStats.append(keyword)
 	for i in range(maxTier):
 		var curTierArray = []
 		for unitName in unitLibrary:
@@ -260,7 +287,15 @@ func _ready():
 	pass # Replace with function body.
 
 
+func generateBiomeOrder():
+	var possibleBiomes = []
+	biomeOrder = []
+	for element in elementLibrary:
+		possibleBiomes.append(element)
 	
+	biomeOrder = shuffleArray(possibleBiomes)
+	biomeOrder.insert(0,'neutral')
+		
 
 func addSpot(parentNode):
 	var newSpot = spotScene.instance()
@@ -275,11 +310,11 @@ func randomUnitBasedOn(stage):
 	
 func instanceUnit(unitName):
 	var unit = load('res://units/Unit.tscn').instance()
-	var file2Check = File.new()
-	var scriptName = str('res://units/scripts/', unitName, '.gd')
-	var doesScriptExist = file2Check.file_exists(scriptName)
-	if doesScriptExist:
-		unit.set_script( load(scriptName ))
+	#var file2Check = File.new()
+	#var scriptName = str('res://units/scripts/', unitName, '.gd')
+	#var doesScriptExist = file2Check.file_exists(scriptName)
+	#if doesScriptExist:
+		#unit.set_script( load(scriptName ))
 	unit.render(unitName)
 	connect('avgStatsChanged', unit, 'updateInfo')
 	return unit

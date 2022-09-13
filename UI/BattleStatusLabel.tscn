@@ -1,18 +1,80 @@
-[gd_scene load_steps=3 format=2]
+[gd_scene load_steps=6 format=2]
 
 [ext_resource path="res://resources/fonts/Comfortaa-VariableFont_wght.ttf" type="DynamicFontData" id=1]
+[ext_resource path="res://UI/BattleStatusLabel.gd" type="Script" id=2]
+[ext_resource path="res://resources/fonts/curvy_font.tres" type="DynamicFont" id=3]
 
-[sub_resource type="DynamicFont" id=1]
-size = 14
+[sub_resource type="StyleBoxFlat" id=1]
+bg_color = Color( 0, 0, 0, 0.901961 )
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color( 1, 1, 1, 1 )
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+expand_margin_left = 1.0
+expand_margin_right = 1.0
+expand_margin_top = 1.0
+expand_margin_bottom = 1.0
+
+[sub_resource type="DynamicFont" id=2]
+size = 18
 font_data = ExtResource( 1 )
 
-[node name="Label" type="Label"]
-margin_top = 33.0
-margin_right = 46.0
-margin_bottom = 45.0
-custom_fonts/font = SubResource( 1 )
-text = "Poison 2"
+[node name="StatusLabel" type="Control"]
+margin_left = 50.0565
+margin_top = -0.33371
+margin_right = 50.0565
+margin_bottom = -0.33371
+script = ExtResource( 2 )
+
+[node name="Movable" type="Control" parent="."]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+
+[node name="Panel" type="Panel" parent="Movable"]
+self_modulate = Color( 1, 1, 1, 0.407843 )
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+margin_left = -47.0
+margin_top = -12.0
+margin_right = 47.0
+margin_bottom = 10.0
+custom_styles/panel = SubResource( 1 )
+
+[node name="Label" type="Label" parent="Movable"]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+margin_left = -70.2649
+margin_top = -10.5
+margin_right = 69.7351
+margin_bottom = 10.5
+custom_fonts/font = SubResource( 2 )
+text = "poison 1"
 align = 1
-__meta__ = {
-"_edit_use_anchors_": false
-}
+valign = 1
+
+[node name="2" type="RichTextLabel" parent="."]
+visible = false
+margin_left = -37.0
+margin_top = -4.0
+margin_right = 129.0
+margin_bottom = 17.0
+custom_fonts/normal_font = ExtResource( 3 )
+bbcode_enabled = true
+bbcode_text = "[fill]text[/fill][s]{text}[/s]"
+text = "text{text}"
+scroll_active = false
+
+[node name="Tween" type="Tween" parent="."]
+
+[connection signal="tween_all_completed" from="Tween" to="." method="_on_Tween_tween_all_completed"]

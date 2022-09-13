@@ -37,25 +37,43 @@ font_data = ExtResource( 9 )
 
 [node name="Battle" type="Node2D"]
 position = Vector2( -1, -2 )
+z_index = -1
 script = ExtResource( 1 )
+debugEnemy = "skorpion"
+debugEnemyCount = 2
 
-[node name="Clouds" type="Node2D" parent="."]
-position = Vector2( -162, 48 )
-z_index = -100
-script = ExtResource( 4 )
+[node name="Scenery" type="Node2D" parent="."]
 
-[node name="Cloud" parent="Clouds" instance=ExtResource( 3 )]
-z_index = -100
+[node name="Sky" type="Sprite" parent="Scenery"]
+position = Vector2( 641, 56 )
+z_index = -999
+texture = ExtResource( 5 )
 
-[node name="Ground" type="Sprite" parent="."]
+[node name="Hills" type="Sprite" parent="Scenery"]
+position = Vector2( 642, 157 )
+z_index = -13
+texture = ExtResource( 7 )
+
+[node name="Ground" type="Sprite" parent="Scenery"]
 position = Vector2( 641, 363 )
 z_index = -1
 texture = ExtResource( 6 )
 
-[node name="Hills" type="Sprite" parent="."]
-position = Vector2( 642, 157 )
-z_index = -2
-texture = ExtResource( 7 )
+[node name="Clouds" type="Node2D" parent="Scenery"]
+position = Vector2( 2, 42 )
+z_index = -10
+script = ExtResource( 4 )
+
+[node name="Cloud" parent="Scenery/Clouds" instance=ExtResource( 3 )]
+position = Vector2( -138, 2 )
+
+[node name="ColorRect" type="ColorRect" parent="."]
+margin_left = -190.0
+margin_top = -136.0
+margin_right = 1586.0
+margin_bottom = 927.0
+mouse_filter = 2
+color = Color( 0.92549, 0.411765, 1, 0.321569 )
 
 [node name="EnemiesPos" type="Position2D" parent="."]
 position = Vector2( 933, 397 )
@@ -66,7 +84,7 @@ position = Vector2( 311, 382 )
 [node name="Tween" type="Tween" parent="."]
 
 [node name="EnemySpots" type="Node2D" parent="."]
-position = Vector2( 1094, 399 )
+position = Vector2( 629, 190 )
 script = ExtResource( 2 )
 disToCover = 700
 
@@ -75,21 +93,14 @@ position = Vector2( 640, 592 )
 script = ExtResource( 2 )
 disToCover = 700
 
-[node name="Sky" type="Sprite" parent="."]
-position = Vector2( 641, 56 )
-z_index = -999
-texture = ExtResource( 5 )
-
-[node name="CloudCanvas" type="CanvasLayer" parent="."]
-
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2( 633, 355 )
 zoom = Vector2( 1.2, 1.2 )
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
+layer = 0
 
 [node name="Intro" type="Label" parent="CanvasLayer"]
-visible = false
 margin_left = 2.0
 margin_top = 155.0
 margin_right = 1281.0
@@ -119,9 +130,6 @@ margin_top = 126.0
 margin_right = 855.0
 margin_bottom = 530.0
 theme = ExtResource( 8 )
-__meta__ = {
-"_edit_use_anchors_": false
-}
 
 [node name="Label" type="Label" parent="CanvasLayer/VictoryScreen"]
 margin_left = 77.0
@@ -193,16 +201,12 @@ margin_right = 425.0
 margin_bottom = 332.0
 
 [node name="PrebattleChoice" type="Panel" parent="CanvasLayer"]
-visible = false
 margin_left = 431.0
 margin_top = 151.0
 margin_right = 822.0
 margin_bottom = 612.0
 theme = ExtResource( 8 )
 script = ExtResource( 12 )
-__meta__ = {
-"_edit_use_anchors_": false
-}
 
 [node name="ChoiceLabel" type="RichTextLabel" parent="CanvasLayer/PrebattleChoice"]
 margin_left = 30.0
@@ -228,6 +232,7 @@ __meta__ = {
 }
 
 [node name="RoundLabel" type="Label" parent="CanvasLayer"]
+visible = false
 margin_left = 504.0
 margin_top = 71.0
 margin_right = 769.0

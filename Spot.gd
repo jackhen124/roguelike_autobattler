@@ -21,7 +21,7 @@ func _ready():
 	$Particles.hide()
 	if type == 'sell':
 		$CoinLabel.hide()
-	
+	$Target.hide()
 	#$Pos.position = rect_size / 2
 	pass # Replace with function body.
 	
@@ -71,7 +71,7 @@ func fill(newUnit, emptyUnitsOldSpot = true):
 	#print('filling ', type, ' spot with unit: ', _unit.id)
 	if type == 'store':
 		modulate.a = 1
-	print('filling '+name+' with '+newUnit.id)
+	
 	if is_instance_valid(newUnit.get_parent()):
 		newUnit.get_parent().empty()
 	unit = newUnit
@@ -83,12 +83,14 @@ func fill(newUnit, emptyUnitsOldSpot = true):
 	if type == 'lineup':
 		#call_deferred('updateSynergies')
 		get_parent().updateSynergies()
+	if type == 'bench' || type == 'graveyard':
+		unit.resetCurStats()
 	if type == 'sell':
 		Global.player.unitSold(unit)
 		empty(true)
 		
 func finishSwap():
-	print('finishing swap: '+giveUnit.id+' >>> '+swapFromSpot.name)
+	
 	swapFromSpot.fill(giveUnit)
 	
 	
@@ -117,19 +119,19 @@ func empty(freeUnit = false):
 
 
 func _on_Button_pressed():
-	if !Global.player.battling:
-		if unit!= null && unit != player.holding: #spot is full
+	if type != 'battle':
+		if unit!= null && unit != Global.player.holding: #spot is full
 			if type == 'store': #buy unit
-				player.buyUnit(unit)
+				Global.player.buyUnit(unit)
 				Global.player.unitInfoPanel.hide()
 			elif type == 'bench' || 'lineup': #click spot with unit
-				if player.holding== null: #grab unit
-					player.holding = unit
+				if Global.player.holding== null: #grab unit
+					Global.player.holding = unit
 					
-				elif player.holding != null:# swap units
-					var unitGet = player.holding
+				elif Global.player.holding != null:# swap units
+					var unitGet = Global.player.holding
 					var unitGive = unit
-					var otherSpot = player.holding.get_parent()
+					var otherSpot = Global.player.holding.get_parent()
 					
 					remove_child(unitGive)
 					otherSpot.remove_child(unitGet)
@@ -137,7 +139,7 @@ func _on_Button_pressed():
 					otherSpot.fill(unitGive)
 					
 					
-					player.holding = null
+					Global.player.holding = null
 					
 					pass
 					
@@ -163,8 +165,8 @@ func highlight(color = Color(1,1,1)):
 	$Sprite.self_modulate.a = 1
 	
 func targetHighlight(spot):
-	spot.get_node('Sprite').modulate = Color(1.5,0.8,0.8,1)
-	spot.get_node('Sprite').show()
+	#spot.get_node('Sprite').modulate = Color(1.5,0.8,0.8,1)
+	spot.get_node('Target').show()
 	targetSpots.append(spot)
 	
 
@@ -174,14 +176,16 @@ func targetHighlight(spot):
 func unhighlight():
 	$Sprite.modulate = Color(1,1,1)
 	$Sprite.hide()
+	$Target.hide()
 	for target in targetSpots:
 		target.unhighlight()
 	targetSpots = []
 	
 func _draw():
-	if targetSpots.size() > 0:
-		for i in targetSpots.size():
-			draw_line($Sprite.position, targetSpots[i].get_node('Sprite').global_position - global_position, Color(1,1,1), 5)
+	pass
+	#if targetSpots.size() > 0:
+		#for i in targetSpots.size():
+			#draw_line($Sprite.position, targetSpots[i].get_node('Sprite').global_position - global_position, Color(1,1,1), 5)
 
 
 func _on_Button_mouse_entered():
@@ -200,15 +204,19 @@ func _on_Button_mouse_entered():
 	if is_instance_valid(unit):
 		emit_signal('hover', unit)
 		$Sprite.self_modulate.a = 1
-		$Particles.show()
+		if type != 'battle':
+			$Particles.show()
 	pass # Replace with function body.
 
 
 func _on_Button_mouse_exited():
+	unHover()
+	#$Sprite/Sprite.hide()
+	pass # Replace with function body.
+
+func unHover():
 	$Particles.hide()
 	$Sprite.self_modulate.a = 0.3
 	if is_instance_valid(unit):
 		emit_signal('unhover')
 	Global.player.unitInfoPanel.hide()
-	#$Sprite/Sprite.hide()
-	pass # Replace with function body.

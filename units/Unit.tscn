@@ -105,9 +105,6 @@ mouse_filter = 2
 texture = ExtResource( 4 )
 expand = true
 stretch_mode = 6
-__meta__ = {
-"_edit_use_anchors_": false
-}
 
 [node name="Type2" type="TextureRect" parent="."]
 margin_left = -2.0
@@ -118,9 +115,6 @@ mouse_filter = 2
 texture = ExtResource( 4 )
 expand = true
 stretch_mode = 6
-__meta__ = {
-"_edit_use_anchors_": false
-}
 
 [node name="HealthIndicator" parent="." instance=ExtResource( 5 )]
 position = Vector2( -53.4486, 22.0003 )
@@ -148,19 +142,29 @@ __meta__ = {
 [node name="HitAudio" type="AudioStreamPlayer" parent="."]
 stream = ExtResource( 8 )
 
-[node name="StatusLabels" type="Node2D" parent="."]
-position = Vector2( -94.2944, -4.8657 )
-
-[node name="StatusLabels" type="VBoxContainer" parent="StatusLabels"]
-margin_left = -40.9789
-margin_top = -40.3746
-margin_right = 5.02113
-margin_bottom = 38.6254
+[node name="StatChangeLabels" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+margin_left = -26.6031
+margin_top = -155.225
+margin_right = 29.3969
+margin_bottom = -47.2252
 mouse_filter = 2
+custom_constants/separation = 22
+alignment = 2
+
+[node name="StatLabels" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+margin_left = -148.375
+margin_top = -77.0798
+margin_right = -87.3751
+margin_bottom = 66.9202
+rect_pivot_offset = Vector2( 60.9786, 72.5526 )
+mouse_filter = 2
+custom_constants/separation = 22
 alignment = 1
-__meta__ = {
-"_edit_use_anchors_": false
-}
+
+[node name="Labels" type="Node2D" parent="."]
+position = Vector2( -94.2944, -4.8657 )
 
 [node name="BattlePowerPos" type="Position2D" parent="."]
 position = Vector2( -83.0537, 14.8688 )

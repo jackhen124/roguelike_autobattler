@@ -98,7 +98,7 @@ func updateSynergies():
 							enemyEffects['aquatic'] = curEffectAmount
 					match type:
 						'earthen':
-							spot.unit.recieveEffect('armor', curEffectAmount)
+							spot.unit.changeStat('armor', curEffectAmount)
 					match type:
 						'solar':
 							allyEffects['solar'] = curEffectAmount
@@ -113,5 +113,6 @@ func updateSynergies():
 							allyEffects['lunar'] = curEffectAmount
 					match type:
 						'floral':
-							spot.unit.recieveEffect('regeneration', curEffectAmount)
-	Global.player.infoPanel.updateSynergies(typeCounts)
+							spot.unit.changeStat('regeneration', curEffectAmount)
+	if name== 'LineupSpots':
+		Global.player.infoPanel.updateSynergies(typeCounts)

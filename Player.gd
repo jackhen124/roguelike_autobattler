@@ -15,11 +15,15 @@ onready var tween = $Tween
 var battleScene = preload('res://battle/Battle.tscn')
 var battling = false
 var battle
-onready var store = $GUI/Store
-onready var benchSpots = $LeaveScreen/BenchSpots
+var oldBattle
+onready var store = get_node('%Store')
+
 onready var lineupSpots = $LineupSpots
-onready var infoPanel = $GUI/InfoPanel
+onready var infoPanel = $Front/GUI/InfoPanel
 onready var coinLabel = $CoinLabel
+onready var graveyard = get_node('%Graveyard')
+onready var gui = get_node('%GUI')
+onready var benchSpots = get_node('%BenchSpots')
 var offscreenDis = 700
 
 var rerollCost = 0
@@ -34,9 +38,10 @@ func _ready():
 	if Global.game.debug:
 		coins = 100
 		addUnit('skunk')
+		addUnit('skorpion', graveyard)
 	
 	call_deferred('afterReady')
-	
+	graveyard.hide()
 	for spot in lineupSpots.get_children():
 		spot.player = self
 		spot.render('lineup')
@@ -51,11 +56,12 @@ func _ready():
 
 func afterReady():
 	store.refresh()
-	
+	initializeBattle()
 	Global.updateAverageStats([store.get_node('Selection').getUnits()])
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta):
+	
 	if holding!= null:
 		holding.global_position = get_viewport().get_mouse_position()
 	if lineupVertical:
@@ -77,7 +83,7 @@ func _process(delta):
 			
 	else:
 		if $LineupSpots.percentVertical > 0:
-			battle.modulate.a = $LineupSpots.percentVertical
+			#battle.modulate.a = $LineupSpots.percentVertical
 			$LineupSpots.percentVertical = max($LineupSpots.percentVertical - delta*0.7, 0)
 			$LineupSpots.updatePositions()
 			$LineupSpots.global_position.y = CustomFormulas.proportion(lineupStartPos.y, battle.get_node('AlliesPos').global_position.y, $LineupSpots.percentVertical)
@@ -85,11 +91,17 @@ func _process(delta):
 			#battle.get_node('Enemyspots').percentVertical = $LineupSpots.percentVertical
 			if $LineupSpots.percentVertical ==0:
 				if battling:
-					battle.queue_free()
+					
 					battling = false
+	
 	pass
 	
 func afterBattle():
+	if stageNum % Global.stagesPerBiome == 0:
+		showGraveyard()
+	else:
+		initializeBattle()
+		gui.show()
 	stageNum +=1
 	lineupVertical = false
 	#var anima = Anima.begin($LeaveScreen)
@@ -97,37 +109,75 @@ func afterBattle():
 	for spot in lineupSpots.get_children():
 		spot.render('lineup')
 	#anima.play()
-	var anima = Anima.begin($GUI)
-	anima.then({property = 'y', to = offscreenDis, duration = 1.5, relative = true})
-	anima.play()
+	#var anima = Anima.begin($Front/GUI)
+	#anima.then({property = 'y', to = offscreenDis, duration = 1.5, relative = true})
+	#anima.play()
 	
-	$GUI/ReadyButton.show()
+	coinLabel.show()
+	benchSpots.show()
+	
+	$Front/EndPreviewButton.hide()
 	store.refresh()
 	$LeaveScreen.modulate.a = 1
 	
+	#call_deferred('initializeBattle')
 	
+	
+func initializeBattle():
+	#print('INITIALIZING BATTLE')
+	
+	oldBattle = battle
+	battle = battleScene.instance()
+	
+	
+	call_deferred("freeOldBattle")
+	$BattleParent.add_child(battle)
+	
+	battle.render(stageNum)
+	
+	
+	
+func freeOldBattle():
+	#print('FREEING OLD BATTLE')
+	if is_instance_valid(oldBattle):
+		print('freeing old battle')
+		oldBattle.queue_free()
+		print('battles: '+str($BattleParent.get_children().size()))
+		#hide()
+	
+func showGraveyard():
+	get_node('%Store').hide()
+	get_node('%Graveyard').show()
+	get_node('%GraveyardSpots').updatePositions()
+	
+func clearGraveyard():
+	for spot in get_node('%GraveyardSpots'):
+		spot.queue_free()
 	
 func nextBattle():
-	
+	$Front/EndPreviewButton.hide()
 	battling = true
-	$GUI/ReadyButton.hide()
-	battle = battleScene.instance()
-	$BattleParent.add_child(battle)
-	battle.player = self
+	gui.hide()
+	benchSpots.hide()
+	
 	#battle.render(getLineupUnits(), otherPlayer.getLineupUnits())
 	for spot in lineupSpots.get_children():
 		spot.render('battle')
-	battle.render(getLineupUnits(), stageNum)
+	
 	battle.allySpots = $LineupSpots
 	#animaLeft($Bench)
-	var anima = Anima.begin($LeaveScreen)
+	#var anima = Anima.begin($LeaveScreen)
 	#anima.then({property = 'y',to = offscreenDis, duration = 1, relative = true})
-	anima.then({property = 'opacity',to = 0, duration = 1})
-	anima.with({node = $CoinLabel, property = 'opacity', to = 0, duration = 1})
-	anima.play()
-	anima = Anima.begin($GUI)
-	anima.then({property = 'y', to = -offscreenDis, duration = 1, relative = true, on_completed  = [funcref(battle, 'start'), []] })
-	anima.play()
+	#anima.then({property = 'opacity',to = 0, duration = 1})
+	#anima.with({node = $CoinLabel, property = 'opacity', to = 0, duration = 1})
+	#anima.play()
+	#anima = Anima.begin($Front/GUI)
+	#anima.then({property = 'y', to = -offscreenDis, duration = 1, relative = true, on_completed  = [funcref(battle, 'start'), []] })
+	#anima.play()
+	gui.modulate.a = 1
+	coinLabel.modulate.a = 1
+	battle.start(getLineupUnits())
+	
 
 func unitSold(unit):
 	coins+= unit.tier + unit.level-1
@@ -135,7 +185,7 @@ func unitSold(unit):
 	updateInfo()
 	
 func unitDie(unit):
-	var newSpot = addSpot($Graveyard, 'graveyard')
+	var newSpot = addSpot(get_node('%GraveyardSpots'), 'graveyard')
 	newSpot.fill(unit)
 	
 	
@@ -159,9 +209,9 @@ func addSpot(group, type):
 
 func updateInfo():
 	emit_signal('needUpdate')
-	$GUI/RerollButton/CoinLabel.setCoins(rerollCost)
+	$Front/GUI/RerollButton/CoinLabel.setCoins(rerollCost)
 	if rerollCost == 0:
-		$GUI/RerollButton/CoinLabel.setCoins('Free')
+		$Front/GUI/RerollButton/CoinLabel.setCoins('Free')
 
 	coinLabel.setCoins(coins)
 	
@@ -216,7 +266,7 @@ func buyUnit(unit):
 		Global.playAudio('coin')
 		
 		coins-= Global.unitLibrary[unit.id].tier
-		unit.player = self
+		
 		if canMerge(unit):
 			merge(unit)
 		getFirstEmptySpot().fill(unit)
@@ -226,11 +276,15 @@ func buyUnit(unit):
 		updateInfo()
 		
 
-func addUnit(unitName):
+func addUnit(unitName, group = null):
 	var unit = Global.instanceUnit(unitName)
 	if canMerge(unit):
 		merge(unit)
-	getFirstEmptySpot().fill(unit)
+	if group == graveyard:
+		unitDie(unit)
+		pass
+	else:
+		getFirstEmptySpot().fill(unit)
 
 func getFirstEmptySpot():
 	for spot in lineupSpots.get_children():
@@ -266,3 +320,21 @@ func collectLoot(button):
 		Global.playAudio('coin')
 		
 	updateInfo()
+
+
+func _on_PreviewButton_pressed():
+	$Front/GUI.hide()
+	$Front/EndPreviewButton.show()
+	pass # Replace with function body.
+
+
+func _on_EndPreviewButton_pressed():
+	$Front/GUI.show()
+	pass # Replace with function body.
+
+
+func _on_GraveyardButton_pressed():
+	graveyard.hide()
+	gui.show()
+	initializeBattle()
+	pass # Replace with function body.

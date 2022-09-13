@@ -21,6 +21,7 @@ func refresh(level = 1):
 		spot.empty(true)
 		spot.render('store')
 		spot.player = get_parent().get_parent()
+		
 		spot.fill(unit)
 		
 

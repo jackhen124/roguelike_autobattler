@@ -1,10 +1,11 @@
-[gd_scene load_steps=6 format=2]
+[gd_scene load_steps=7 format=2]
 
 [ext_resource path="res://Spot.gd" type="Script" id=1]
 [ext_resource path="res://icon.png" type="Texture" id=2]
 [ext_resource path="res://UI/CoinLabel.tscn" type="PackedScene" id=3]
 [ext_resource path="res://resources/spot_effect.png" type="Texture" id=4]
 [ext_resource path="res://resources/spot.png" type="Texture" id=5]
+[ext_resource path="res://resources/target.png" type="Texture" id=6]
 
 [node name="Spot" type="Node2D"]
 script = ExtResource( 1 )
@@ -15,6 +16,7 @@ position = Vector2( 0.13578, -4.46864 )
 [node name="Sprite" type="Sprite" parent="Pos"]
 visible = false
 scale = Vector2( 0.185661, 0.185661 )
+z_index = -1
 texture = ExtResource( 2 )
 
 [node name="Button" type="Button" parent="."]
@@ -46,6 +48,7 @@ margin_right = 13.0803
 margin_bottom = 88.0994
 
 [node name="Particles" type="CPUParticles2D" parent="."]
+modulate = Color( 1, 1, 1, 0.486275 )
 position = Vector2( 0.667419, 26.6967 )
 amount = 30
 lifetime = 2.0
@@ -57,6 +60,25 @@ spread = 0.0
 gravity = Vector2( 0, -30 )
 initial_velocity = 30.0
 scale_amount = 12.0
+
+[node name="Target" type="Sprite" parent="."]
+scale = Vector2( 0.6, 0.6 )
+z_index = 1
+texture = ExtResource( 6 )
+
+[node name="Sprite" type="Sprite" parent="Target"]
+self_modulate = Color( 0, 0, 0, 1 )
+position = Vector2( 0.350367, -2.38419e-07 )
+scale = Vector2( 1.03285, 1.03285 )
+z_index = -1
+texture = ExtResource( 6 )
+
+[node name="Sprite2" type="Sprite" parent="Target"]
+self_modulate = Color( 0, 0, 0, 1 )
+position = Vector2( -0.000402451, -0.116929 )
+scale = Vector2( 0.972559, 0.972559 )
+z_index = -1
+texture = ExtResource( 6 )
 
 [connection signal="mouse_entered" from="Button" to="." method="_on_Button_mouse_entered"]
 [connection signal="mouse_exited" from="Button" to="." method="_on_Button_mouse_exited"]

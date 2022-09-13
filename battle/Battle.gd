@@ -4,8 +4,11 @@ extends Node2D
 # Declare member variables here. Examples:
 # var a = 2
 # var b = "text"
-signal startNextAction
-signal preAction
+export var debugEnemy = 'skunk'
+export var debugEnemyCount = 1
+signal doPreppedAction
+
+signal mergeStatuses
 
 var allies = []
 var enemies = []
@@ -17,7 +20,7 @@ onready var tween = $Tween
 var alliesDone
 var enemiesDone
 var roundNum = 1
-var player
+
 var allySpots
 var battleOver = false
 var averageHp = 5
@@ -30,25 +33,28 @@ enum states {intro, battleStart, movingTogether, attack, roundEnd}
 var state = states.intro
 var lastState
 
-
+var guardingUnit = null
 var waitingForActionClick = false
 
 var waitTime = 0
 var afterWaitMethod = ''
 var afterWaitArgs = []
 
-var curActionTaker = null
-var actionTakers = []
+var waitingFor = []
+
 
 var playerVictory = false
 
 var lootItems = []
 
-const roundEndOrder = ['lunar', 'individual', 'poison']
+var actionStack = []
+
+const roundEndOrder = ['lunar', 'regeneration','individual', 'poison']
 var roundEndIndex = 0
 # Called when the node enters the scene tree for the first time.
 func _ready():
 	addLoot('coins', 5)
+	$CanvasLayer.hide()
 	$CanvasLayer/PrebattleChoice.hide()
 	$CanvasLayer/VictoryScreen.hide()
 	$CanvasLayer/Intro.hide()
@@ -91,30 +97,32 @@ func debug():
 	$EnemySpots.updatePositions()
 	$TestAllySpots.global_position = $EnemiesPos.global_position
 	$TestAllySpots.updatePositions()
-	start()
+	
 
-func render(allyUnitArray, difficulty):
-	allies = allyUnitArray
-	
-	generateEnemies(difficulty)
-	
-		
-	
-	var allUnits = [allies,enemies]
-	Global.updateAverageStats(allUnits)
+func render(stageNum):
 	
 	
+	generateEnemies(stageNum)
+	var biomeIndex = (float(stageNum) / float(Global.stagesPerBiome)) -1
+	biomeIndex = floor(biomeIndex)
+	var curBiome = Global.biomeOrder[biomeIndex]
+	if Global.elementLibrary.has(curBiome):
+		$ColorRect.show()
+		$ColorRect.modulate = Color(Global.elementLibrary[curBiome].color)
+	else:
+		$ColorRect.hide()
 	pass
 	
-func start():
-	
+func start(allyUnitArray):
+	$CanvasLayer.show()
+	allies = allyUnitArray
 	for ally in allies:
 		ally.battle = self
 		ally.connect('death', self, 'removeAlly', [ally])
 		ally.connect('unitActionDone', self, 'unitActionDone', [ally])
-		connect('preAction', ally, 'preAction')
 		
-		ally.player = player
+		connect('mergeStatuses', ally, 'mergeNewStats')
+		
 		ally.setBattleMode(true)
 		ally.updateInfo()
 		
@@ -125,7 +133,8 @@ func start():
 		enemy.setBattleMode(true)
 		enemy.connect('death', self, 'removeEnemy', [enemy])
 		enemy.connect('unitActionDone', self, 'unitActionDone', [enemy])
-		connect('preAction', enemy, 'preAction')
+		connect('mergeStatuses', enemy, 'mergeNewStats')
+		
 		enemy.updateInfo()
 		
 		pass
@@ -134,14 +143,15 @@ func start():
 	
 	centerPos = $EnemiesPos.global_position.move_toward($AlliesPos.global_position, float($EnemiesPos.global_position.distance_to($AlliesPos.global_position))/2.0)
 
-	
+	var allUnits = [allies,enemies]
+	Global.updateAverageStats(allUnits)
 	intro()
 	
 	#nextAction()
 func intro():
 	var introAnima = Anima.begin($CanvasLayer/Intro)
-	introAnima.then({property = 'opacity', duration = 1.5, to = 1, easing = Anima.EASING.EASE_IN_OUT})
-	introAnima.then({property = 'opacity', duration = 1.5, to = 0,from=1, easing = Anima.EASING.EASE_IN_OUT,on_completed = [funcref(self, 'onIntroCompleted')]})
+	introAnima.then({property = 'opacity', duration = 0.5, to = 1, easing = Anima.EASING.EASE_IN_OUT})
+	introAnima.then({property = 'opacity', duration = 0.5, to = 0,from=1, easing = Anima.EASING.EASE_IN_OUT,on_completed = [funcref(self, 'onIntroCompleted')]})
 	#introAnima.then({animation = 'fade_out', duration = 1.5, easing = Anima.EASING.EASE_IN_OUT})
 	
 	introAnima.set_visibility_strategy(Anima.VISIBILITY.HIDDEN_AND_TRANSPARENT)
@@ -154,17 +164,30 @@ func onIntroCompleted():
 	$CanvasLayer/PrebattleChoice.show()
 	Global.player.lineupVertical = true
 
-
-
-
-
-
+func addToActionStack(type, actionTakers=null,  data = null):
 	
-func nextAction():
+	if type == 'attack':
+		if actionTakers[0].abilities.has('on-attack'):
+			for ability in actionTakers[0].abilities['on-attack']:
+				addToActionStack(self, 'on-attack', ability)
+				print('1adding to actionStack: '+type)
+	actionStack.append({'actionTakers':actionTakers, 'type':type, 'data':data})
+
+func nextAction(): 
+	#prep actionStack[0] if there is one, 
+	#otherwise add one and recurse
 	
-	#print('	next action! allyTurn: '+str(allyTurn))
 	if !battleOver:
-		if state == states.attack:
+		if actionStack.size() > 0:
+			
+			print('ActionStack: '+str(actionStack))
+			for unit in actionStack[0].actionTakers:
+				unit.preAction(actionStack[0].type, actionStack[0].data)
+			#if actionStack[0].type != 'startattack':
+			waitingForActionClick = true
+			actionStack.remove(0)
+			return
+		elif state == states.attack: # add next attacker to actionStack and recurse
 			var nextAttacker
 			if alliesDone && enemiesDone:
 				#print('all units done - action phase done with '+ states.keys()[state])
@@ -176,12 +199,14 @@ func nextAction():
 				allyTurn = true
 			if allyTurn:
 				
-				nextAttacker = getNextActionTaker(allies)
+				nextAttacker = getNextAttacker(allies)
 				#print('	next attacker: ',nextAttacker)
 				if nextAttacker != null:
-					#print('	calling for ally action')
-					prepAction(nextAttacker)
+					print('2adding to actionStack: ')
+					addToActionStack('startattack',[nextAttacker])
+					
 					allyTurn = false
+					nextAction()
 					return
 				else:
 					#print('	all allies are done...')
@@ -191,10 +216,11 @@ func nextAction():
 					return
 			else:
 				
-				nextAttacker = getNextActionTaker(enemies)
+				nextAttacker = getNextAttacker(enemies)
 				if nextAttacker != null:
 					#print('	calling for enemy action')
-					prepAction(nextAttacker)
+					print('3adding to actionStack: ')
+					addToActionStack('startattack', [nextAttacker])
 					allyTurn = true
 					return
 				else:
@@ -204,49 +230,28 @@ func nextAction():
 					nextAction()
 					return
 		elif state == states.roundEnd:
-			if roundEndIndex >= roundEndOrder.size():
-				roundEndIndex = 0
-				nextState()
-				return
-			match roundEndOrder[roundEndIndex]:
-				'lunar':
-					
-					emit_signal('preAction', 'lunar')
-				'poison':
-					emit_signal('preAction', 'poison')
-			roundEndIndex+=1
-			if actionTakers.size() == 0:
-				nextAction()
-				return
-			else:
-				waitingForActionClick = true
-			
+			for actionType in roundEndOrder:
+				var curActionUnits = []
+				print('4adding to actionStack: ')
+				addToActionStack(actionType)
+	
+			nextAction()
+			return
 	else:
-		print('battle over')
-		#actionPhaseDone()
 		endBattle()
 		
-func prepAction(actionTaker, actionName = 'attack'):
-	print('prepping next action for : ',actionTaker.id)
-	waitingForActionClick = true
-	
-	if state == states.attack:
-		#print(actionTaker.id + ' taking next action: attack')
-		actionTaker.hasAttacked = true
 
-		actionTaker.preAction('attack')
-	
-		
-func addActionTaker(unit):
+
+func addWaitingFor(unit):
 	#this is called by unit in preAction, only if the action actually needs to be done
-	actionTakers.append(unit)
-	connect('startNextAction', unit, 'startAction', [], CONNECT_ONESHOT)
-	print('adding action taker: '+unit.id)
+	waitingFor.append(unit)
+	connect('doPreppedAction', unit, 'doAction', [], CONNECT_ONESHOT)
+	#print('adding action taker: '+unit.id)
 		
 func unitActionDone(unit):
-	actionTakers.erase(unit)
+	waitingFor.erase(unit)
 	#print(unit.id+' done with action! actiontakers left: '+str(actionTakers))
-	if actionTakers.size() <= 0:
+	if waitingFor.size() <= 0:
 		nextAction()
 
 func nextState():
@@ -291,7 +296,7 @@ func nextState():
 		
 	pass
 
-func getNextActionTaker(unitArray):
+func getNextAttacker(unitArray):
 	#print('getting next attacker from ',unitArray)
 	var result = null
 	for unit in unitArray:
@@ -386,12 +391,12 @@ func generateEnemies(difficulty):
 			level = 1
 		
 		if Global.game.debug:
-			addEnemy('skunk')
-			addEnemy('skunk')
-			addEnemy('skunk')
+			for v in debugEnemyCount:
+				addEnemy(debugEnemy)
 		else:
 			addEnemy(randUnitIndex)
-	$EnemySpots.update()
+	$EnemySpots.updatePositions()
+	$EnemySpots.updateSynergies()
 	
 func applyTeamModifiers(team):
 	var targetTeam
@@ -406,7 +411,7 @@ func applyTeamModifiers(team):
 	for mod in mods:
 		print('applying mod: ',mod)
 		for unit in targetTeam:
-			unit.recieveEffect(mod, mods[mod])
+			unit.changeStat(mod, mods[mod])
 	mods = {}
 
 
@@ -434,7 +439,7 @@ func _on_PrebattleChoice_choiceMade(choiceInfo):
 	pass # Replace with function body.
 	
 func showVictoryScreen():
-	player.coinLabel.modulate.a = 1
+	Global.player.coinLabel.modulate.a = 1
 	var maxLootItems = 4.0
 	
 	for i in range(maxLootItems):
@@ -461,14 +466,15 @@ func _on_ContinueButton_pressed():
 	$CanvasLayer/VictoryScreen.hide()
 	if enemies.size() > 0:
 		get_tree().reload_current_scene()
-	player.afterBattle()
+	Global.player.afterBattle()
 	pass # Replace with function body.
 
 func _input(event):
 	if event.is_action_pressed("left_click"):
 		if waitingForActionClick:
 			print('action click received')
-			emit_signal('startNextAction')
+			emit_signal('doPreppedAction')
+			emit_signal('mergeStatuses')
 			waitingForActionClick = false
 			
 			

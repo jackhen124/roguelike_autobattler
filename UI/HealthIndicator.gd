@@ -37,6 +37,8 @@ var targetHeights = null
 
 var changing = []
 var copyData
+
+var changeSpeed = 8
 # Called when the node enters the scene tree for the first time.
 func _ready():
 	
@@ -47,17 +49,31 @@ func _ready():
 	pass # Replace with function body.
 
 func _process(delta):
-	if curAnimation == 'chunk' || curAnimation == 'poison':
-		oldColor.a -= delta*0.85
-		for i in range(chunkPoints.size()):
-			if !flipped:
-				chunkPoints[i].x-=delta*35
-			else:
-				chunkPoints[i].x+=delta*35
+	#if curAnimation == 'chunk' || curAnimation == 'poison':
+		#oldColor.a -= delta*0.85
+		#for i in range(chunkPoints.size()):
+			#if !flipped:
+				#chunkPoints[i].x-=delta*35
+			#else:
+				#chunkPoints[i].x+=delta*35
 			
-			if oldColor.a <= 0:
-				curAnimation = 'none'
-				
+			#if oldColor.a <= 0:
+				#curAnimation = 'none'
+	for type in changing:
+		if points[type]['cur']['height'] != points[type]['target']['height']:
+			var speedMult = 0.6
+			var speed = changeSpeed+ speedMult*CustomFormulas.diff(points[type]['cur']['height'], points[type]['target']['height'])
+			points[type]['cur']['height'] = move_toward(points[type]['cur']['height'], points[type]['target']['height'], delta*speed)
+			
+		else:
+			changing.remove(changing.find(type))
+		if type == 'hp':
+			var prop = float(points[type]['cur']['height']) / float(hbHeight)
+			setColor(prop)
+			
+	if changing.size() > 0:
+		setPoints('cur')
+		
 	update()
 	
 func copyValues(copy):
@@ -65,8 +81,9 @@ func copyValues(copy):
 	maxHp = copy.maxHp
 	updateHbWidth(maxHp)
 	
-func setValues(data, maxHp, targetOrCur = 'cur'):
+func setValues(data, maxHp, targetOrCur = 'cur', animation = 'change'):
 	
+	curAnimation = animation
 	$HpLabel.text = str(data.hp)
 	updateHbWidth(maxHp)
 	
@@ -74,17 +91,26 @@ func setValues(data, maxHp, targetOrCur = 'cur'):
 	if points.size() == 0:
 		firstSet = true
 	for i in data:
+		var height = getHeightBasedOnHp(data[i])
 		if firstSet:
 			points[i] = {'target':{}, 'cur':{}}
-		var height = getHeightBasedOnHp(data[i])
+			#points[i]['cur']['height'] = height
+			#points[i]['target']['height'] = height
+			
 		points[i][targetOrCur]['height'] = height
+		
+		
 	
 	
 	setPoints(targetOrCur)
-	color = CustomFormulas.redToGreen(float(data.hp) / float(maxHp))
-	$BgSprite.modulate = color.darkened(0.3)
+	if targetOrCur == 'target':
+		for type in points:
+			if points[type]['target']['height'] != points[type]['cur']['height']:
+				changing.append(type)
+	setColor(float(data.hp) / float(maxHp))
 	
-func setPoints(targetOrCur):
+	
+func setPoints(targetOrCur): #set upper/lower points based on height
 	for type in points:
 		var upperY
 		var lowerY
@@ -103,6 +129,10 @@ func setPoints(targetOrCur):
 			
 		points[type][targetOrCur]['upper'] = upperY
 		points[type][targetOrCur]['lower']= lowerY
+		
+func setColor(prop):
+	color = CustomFormulas.redToGreen(prop).darkened(0.1)
+	$BgSprite.modulate = color.darkened(0.3)
 		
 func updateHbWidth(_maxHp):
 	maxHp = _maxHp
@@ -142,9 +172,20 @@ func getHeightBasedOnHp(value):
 func _draw():
 	
 	draw_colored_polygon(olPoints, Color(0,0,0,0.4))
-	
 	var hpPoints = [] + generatePointArray(points['hp']['cur']['lower'], points['hp']['cur']['height'])
 	draw_colored_polygon(hpPoints, color)
+	if changing.has('hp'):
+		var changePoints
+		var whiteHeight = CustomFormulas.diff(points['hp']['cur']['height'], points['hp']['target']['height'])
+		if points['hp']['cur']['height'] > points['hp']['target']['height']: #hp going down
+			
+			changePoints = generatePointArray(points['hp']['target']['upper'], whiteHeight)
+		else: #hp going up
+			changePoints = generatePointArray(points['hp']['target']['upper'] + whiteHeight, whiteHeight)
+		draw_colored_polygon(changePoints, Color(1,1,1))
+	
+	
+		
 	var olColor
 	var w
 	
@@ -186,7 +227,7 @@ func _draw():
 		draw_line(armorPoints[2], armorPoints[3], olColor, w)
 		draw_line(armorPoints[3], armorPoints[0], olColor, w)
 	
-	
+
 	
 	
 # EVERYTHING UNDER IS NO LONGER USED

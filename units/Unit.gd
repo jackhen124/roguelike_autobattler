@@ -5,12 +5,15 @@ class_name Unit
 # var a = 2
 # var b = "text"
 var battleStatusLabelScene = preload('res://UI/BattleStatusLabel.tscn')
-onready var statusLabels = $StatusLabels/StatusLabels
+
 signal death
 signal unitActionDone
 
+onready var statChangeLabels = get_node('%StatChangeLabels')
+onready var statLabels = get_node('%StatLabels')
+
 var held = false
-var player
+
 var state = 'store'
 var isAlly = true
 
@@ -20,13 +23,16 @@ var desc
 var level = 1
 var tier = 0
 var curStats = {}
-var baseStats = {'armor':0, 'regeneration':0, 'maxHp':1}
+var lastCurStats = {}
+var abilities = {}
 
+var baseStats = {'armor':0, 'regeneration':0, 'maxHp':1}
+var needsLabel = ['armor', 'poison', 'regeneration']
 var types = []
 var hasAttacked = false
-var hasDoneRoundEnd = false
+
 var battle
-var curTarget = null
+var attackTarget = null
 var attackFromPos = null
 
 onready var tween = $Tween
@@ -46,19 +52,22 @@ var preAttackStopTimer = 0
 
 var hasOnAttack = false
 var nextState = null
-var nextAction = ''
+
+var preppedActionType = ''
+var preppedActionData
 
 
 var waitTime = 0
 var afterWaitMethod = ''
 var afterWaitArgs = []
 
-var statuses = {}
+
 # Called when the node enters the scene tree for the first time.
 func _ready():
 	$MoveParticles.emitting = false
 	baseScale = $Sprite.scale
 	animSpeedRand = Global.rng.randf_range(0.9,1.1)
+	
 	pass # Replace with function body.
 
 
@@ -82,8 +91,8 @@ func _process(delta):
 	var attackFromDisFromTarget = 150
 	var moveSpeed = 250
 	var bonusSpeed
-	if is_instance_valid(curTarget):
-		attackFromPos = Vector2(move_toward(curTarget.global_position.x,battle.centerPos.x, 80), curTarget.global_position.y)
+	if is_instance_valid(attackTarget):
+		attackFromPos = Vector2(move_toward(attackTarget.global_position.x,battle.centerPos.x, 80), attackTarget.global_position.y)
 		
 	else:
 		attackFromPos = null
@@ -99,26 +108,25 @@ func _process(delta):
 				afterWaitArgs = []
 	else:
 		if battleState == battleStates.preAttackMove:
-			bonusSpeed = global_position.distance_to(curTarget.global_position)*0.6
+			bonusSpeed = global_position.distance_to(attackTarget.global_position)*0.6
 			global_position = global_position.move_toward(attackFromPos, delta*(moveSpeed+bonusSpeed))
 			if global_position == attackFromPos:
-				battleState = battleStates.preAttackStop
+				battleState = battleStates.waiting
 				preAttackStopTimer = 0
+				
+				battle.addToActionStack('attack', [self])
+				actionDone()
 		if battleState == battleStates.preAttackStop:
-			preAttackStopTimer+=delta
-			if preAttackStopTimer >= 0.25:
-				if hasOnAttack:
-					waitAnd(0.5, 'changeBattleState', [battleStates.attack])
-					onAttack()
-				else:
+			
+			pass
 					
-					battleState = battleStates.attack
+			#battleState = battleStates.attack
 		if battleState == battleStates.attack:
-			global_position = global_position.move_toward(curTarget.global_position, delta*moveSpeed)
-			if global_position.distance_to(curTarget.global_position) < attackFromDisFromTarget/3:
+			global_position = global_position.move_toward(attackTarget.global_position, delta*moveSpeed)
+			if global_position.distance_to(attackTarget.global_position) < attackFromDisFromTarget/3:
 				attackAction()
 				battleState = battleStates.postAttack
-				curTarget = null
+				attackTarget = null
 		if battleState == battleStates.postAttack:
 			global_position = global_position.move_toward(get_parent().global_position, delta*moveSpeed*2)
 			if global_position == get_parent().global_position:
@@ -138,24 +146,34 @@ func setBattleMode(value):
 		$Type1.hide()
 		$Type2.hide()
 		$AttackIndicator.position = $BattlePowerPos.position
+		mergeNewStats()
+		$StatLabels.show()
 	else:
+		$StatLabels.hide()
 		$Type1.show()
 		$Type2.show()
 		$AttackIndicator.position = $NormalPowerPos.position
-		statuses = {}
+	
 		resetCurStats()
 		updateInfo()
+		mergeNewStats()
 		
 
 	
 func render(_id, _level = 1):
 	id = _id
 	var data = Global.unitLibrary[_id]
-	
+	for abilityTrigger in data.abilities:
+		abilities[abilityTrigger] = []
+		for x in data.abilities[abilityTrigger]:
+			abilities[abilityTrigger].append(x)
 	for stat in data.baseStats:
 		#print(str(id,' setting ', stat, ' to ', data.baseStats[stat]))
 		baseStats[stat] = data.baseStats[stat]
-		
+	for stat in Global.possibleStats:
+		if !baseStats.has(stat):
+			baseStats[stat] = 0
+	baseStats['hp'] = baseStats['maxHp']
 	curStats['hp'] = baseStats['maxHp']
 	types = data.types
 	tier = data.tier
@@ -168,8 +186,8 @@ func render(_id, _level = 1):
 	$MoveParticles.texture = $Sprite.texture
 	#$MoveParticles.scale = $Sprite.scale
 	
-	z_as_relative = false
-	z_index +=1
+	#z_as_relative = false
+	#z_index +=1
 	
 	$Type1.texture = load(str('res://types/sprites/', types[0],'.png'))
 	$Type2.texture = load(str('res://types/sprites/', types[1],'.png'))
@@ -177,22 +195,31 @@ func render(_id, _level = 1):
 		levelUp(false)
 		_level -= 1
 	resetCurStats()
+	
+	var hbUpdate = {'hp':curStats['hp'], 'armor':curStats.armor, 'poison':curStats.poison}
+	hbUpdate['poison'] = curStats['poison']
+	$HealthIndicator.setValues(hbUpdate, curStats.maxHp, 'cur')
+	
 	updateInfo()
+	setBattleMode(false)
 	
 func resetCurStats():
-	for stat in baseStats:
-		if baseStats.has(stat):
-			curStats[stat] = baseStats[stat]
-		else:
-			curStats[stat] = 0
+	#for label in get_node('%StatChangeLabels').get_children():
+		#label.queue_free()
 	
-func _draw():
-	if curTarget != null:
-		var mult
-		if !isAlly:
-			mult = -1
+	for stat in baseStats:
 		
-	pass
+		if stat != 'hp':
+			if baseStats.has(stat):
+				curStats[stat] = baseStats[stat]
+			else:
+				curStats[stat] = 0
+		lastCurStats[stat] = curStats[stat]
+		if needsLabel.has(stat) && curStats[stat] != 0:
+			
+			addLabel(stat, false)
+		
+	
 	
 func levelUp(emitParticles = false, hpMissing = 0):
 	level+=1
@@ -208,41 +235,79 @@ func levelUp(emitParticles = false, hpMissing = 0):
 	curStats.hp = baseStats.maxHp
 	updateInfo()
 	
+func fullRestore():
+	curStats['hp'] = baseStats['maxHp']
+	
+	
 	
 func updateInfo(hpAnimation = 'none'):
 	
 	#print(id + ' cur power: '+str(curStats['power']))
 	
 	$HealthIndicator.setPower(curStats['power'])
-	var hbUpdate = {'hp':curStats['hp'], 'armor':curStats.armor}
-	if statuses.has('poison'):
-		hbUpdate['poison'] = statuses['poison']
-	else:
-		hbUpdate['poison'] = 0
+	var hbUpdate = {'hp':curStats['hp'], 'armor':curStats.armor, 'poison':curStats.poison}
 	
-	$HealthIndicator.setValues(hbUpdate, curStats.maxHp)
+	hbUpdate['poison'] = curStats['poison']
 	
-	for status in statuses:
-		var labelNode
-		if !is_instance_valid(statusLabels.get_node(status)):
-			var newLabel = battleStatusLabelScene.instance()
-			statusLabels.add_child(newLabel)
-			newLabel.name = status
-			if Global.keywords[status].has('color'):
-				newLabel.modulate = Global.keywords[status].color
-			elif Global.elementLibrary[status].has('color'):
-				newLabel.modulate = Global.elementLibrary[status].color
-			labelNode = newLabel
-		else:
-			labelNode = statusLabels.get_node(status)
-		if curStats.has(status):
-			labelNode.text = str(status, ' +', statuses[status])
-		else:
-			labelNode.text = str(status, ' ', statuses[status])
-		if statuses[status] == 0:
-			labelNode.hide()
 	
+	$HealthIndicator.setValues(hbUpdate, curStats.maxHp, 'target')
+	
+	for stat in curStats:
 		
+		if curStats[stat] == lastCurStats[stat]:
+			
+			continue
+		else:
+			addLabel(stat, true)
+		
+
+func addLabel(stat, isChange):
+	#print(id + ' ' +stat+ ' label')
+	var parentNode
+	var labelNode
+	
+	if isChange:
+		parentNode = get_node('%StatChangeLabels')
+	else:
+		parentNode = get_node('%StatLabels')
+	
+	if !parentNode.has_node(stat):
+		if !isChange && curStats[stat] == 0:
+			return
+		
+		var newLabel = battleStatusLabelScene.instance()
+		parentNode.add_child(newLabel)
+		parentNode.move_child(newLabel, 0)
+		newLabel.name = stat
+		
+		labelNode = newLabel
+	else:
+		labelNode = parentNode.get_node(stat)
+		if isChange:
+			if curStats[stat] == labelNode.curAmount:
+				return
+		
+		if !isChange && curStats[stat] == 0:
+			labelNode.hide()
+			return
+	var amount = curStats[stat] - lastCurStats[stat] 
+	if !isChange:
+		amount = curStats[stat]
+	
+	labelNode.render(stat, amount, isChange)
+		
+func mergeNewStats():
+	
+	for label in get_node('%StatChangeLabels').get_children():
+		
+		label.hide()
+		
+	for stat in curStats:
+		
+		lastCurStats[stat] = curStats[stat]
+		if needsLabel.has(stat):
+			addLabel(stat, false)
+
 
 
 func setEnemy():
@@ -251,8 +316,10 @@ func setEnemy():
 	$MoveParticles.scale.x =1
 	$HealthIndicator.set_scale(Vector2($HealthIndicator.get_scale().x*-1, 1))
 	$HealthIndicator.flipped = true
-	$StatusLabels.scale.x*=-1
-	$StatusLabels.global_position.x += 40* abs(scale.x)
+	statChangeLabels.rect_scale.x*=-1
+	statChangeLabels.rect_position.x+=65
+	statLabels.rect_scale.x *= -1
+	statLabels.rect_position.x = -210
 	$AttackIndicator.setFlipped()
 	isAlly = false
 	#$StatusLabels.position.x 
@@ -277,58 +344,63 @@ func getEnemies():
 		return battle.enemies
 	else:
 		return battle.allies
-	
-func preAction(actionType):
-	
-	print('	'+id+ ' PRE prepping action: '+actionType)
-	
-	
+		
+func preAction(actionType, data = null):
 	match actionType:
-		'attack':
-			curTarget = randomTarget()
+		'startattack':
+			attackTarget = randomTarget()
 			get_parent().highlight()
-			get_parent().targetHighlight(curTarget.get_parent())
+			get_parent().targetHighlight(attackTarget.get_parent())
+			if isAlly:
+				$MoveParticles.emitting = true
+			battleState = battleStates.preAttackMove
+		'attack':
+			get_parent().highlight()
+			get_parent().targetHighlight(attackTarget.get_parent())
 			
-			
-		'poison':
-			if !statuses.has('poison'):
-				
-				return
-			if statuses['poison'] <= 0:
-				
-				return
-			get_parent().highlight(Color(Global.keywords.poison.color))
 		_:
+			print('This action prep isnt working: ' + actionType)
 			return
-			
-	nextAction = actionType
-	battleState = battleStates.preAction
-	print('	'+id+ ' prepping action: '+actionType)
-	battle.addActionTaker(self)
+	battle.addWaitingFor(self)
+	preppedActionType = actionType
+	preppedActionData = data
+	
+	
+func doAction():
+	match preppedActionType:
+		'attack':
+			battleState = battleStates.attack
+		'poison':
+			takeDamage(curStats['poison'], 'poison')
+			curStats['poison'] -= 1
+				
+			updatePoisonParticles()
+			waitAnd(1, 'actionDone')
+		'regeneration':
+			heal(curStats['regeneration'])
+			waitAnd(1, 'actionDone')
+	
+		_:
+			print('This do action isnt working: ' + preppedActionType)
+			return
+	preppedActionData = null
+	preppedActionType = ''
+	#battle.addWaitingFor(self)
+		
+
+	
 		
 	
-func startAction():
-	print('	'+id +' starting nextAction '+ nextAction)
-	if nextAction == 'attack':
-		
-		if isAlly:
-			$MoveParticles.emitting = true
-		battleState = battleStates.preAttackMove
-	if nextAction == 'poison':
-		takeDamage(statuses['poison'], 'poison')
-		statuses['poison'] -= 1
-			
-		updatePoisonParticles()
-		waitAnd(1, 'actionDone')
-	nextAction = ''
-		
+
+
+
 func actionDone():
 	
 	get_parent().unhighlight()
-	if curTarget != null:
-		curTarget.get_parent().unhighlight()
-	curTarget = null
-	
+	#if attackTarget != null:
+		#attackTarget.get_parent().unhighlight()
+	#attackTarget = null
+	#updateInfo()
 	emit_signal('unitActionDone')
 	print('	'+id+' actionDone')
 	
@@ -339,16 +411,10 @@ func attackAction():
 	
 	$HitAudio.play()
 	$MoveParticles.emitting = false
-	curTarget.takeDamage(curStats['power'])
+	attackTarget.takeDamage(curStats['power'])
 	
 	pass
 
-
-	
-
-
-	
-	
 func takeDamage(amount, animation = 'chunk'):
 	if curStats['armor'] > 0:
 		Global.playAudio('armor', -5, 0.06)
@@ -358,43 +424,44 @@ func takeDamage(amount, animation = 'chunk'):
 		die()
 	updateInfo(animation)
 	
-
+func heal(amount):
+	curStats.hp += amount
+	if curStats.hp > curStats.maxHp:
+		curStats.hp = curStats.maxHp
+	updateInfo()
 
 
 func die():
 	
 	emit_signal("death")
 	
-	if player!= null:
+	if isAlly:
 		
-		player.unitDie(self)
+		Global.player.unitDie(self)
 	else:
 		hide()
 	
 func onAttack():
-	
-	pass
-	
-
-
-
-	
-func applyEffect(effectName, amount, target):
-	target.recieveEffect(effectName, amount)
-	pass
-
-func recieveEffect(effectName, amount):
-	#print(id + 'recieving ' + effectName)
-	
+	#for onAttack in abilities['on-attack']:
 		
-	if curStats.has(effectName):
-		curStats[effectName]+=amount
+	pass
 	
-	if statuses.has(effectName):
-		statuses[effectName] += amount
+
+
+
+func applyEffect(effectName, amount, target):
+	target.changeStat(effectName, amount)
+	pass
+
+func changeStat(statName, amount):
+	print(id + ' changing ' + statName + ' ' + str(amount))
+	
+	
+	if curStats.has(statName):
+		curStats[statName] += amount
 	else:
-		statuses[effectName] = amount
-	if effectName == 'poison':
+		curStats[statName] = amount
+	if statName == 'poison':
 		updatePoisonParticles()
 	
 	updateInfo()
@@ -405,13 +472,13 @@ func recieveModifier():
 	
 func updatePoisonParticles(alwaysShowMain = false):
 	var poisonProp = 0
-	if !statuses.has('poison'):
+	if !curStats.poison <= 0:
 		poisonProp = 0
 	else:
-		poisonProp = float(statuses['poison']) / baseStats['maxHp']
+		poisonProp = float(curStats['poison']) / baseStats['maxHp']
 	$PoisonParticles.amount = CustomFormulas.proportion(10, 40, poisonProp)
 	$PoisonParticles.emitting = true
-	if statuses.has('poison'):
+	if curStats.poison <= 0:
 		
 		$PersistantPoisonParticles.amount = CustomFormulas.proportion(1, 5, poisonProp)
 		
@@ -420,4 +487,12 @@ func updatePoisonParticles(alwaysShowMain = false):
 	else:
 		$PersistantPoisonParticles.emitting = false
 		
-
+func getName():
+	var result = ''
+	if isAlly:
+		result += 'ally '
+	else:
+		result += 'enemy '
+	result += id + '-'
+	result += str(get_parent().get_position_in_parent())
+	return result
