@@ -37,11 +37,9 @@ func _process(delta):
 func setup():
 	if type == 'battle':
 		#$Sprite.hide()
-		if unit!= null:
-			unit.get_node('Type1').hide()
-			unit.get_node('Type2').hide()
-		else:
-			$Sprite.hide()
+		
+		
+		$Sprite.hide()
 	else:
 		
 		$Sprite.show()
@@ -73,6 +71,8 @@ func fill(newUnit, emptyUnitsOldSpot = true):
 		modulate.a = 1
 	
 	if is_instance_valid(newUnit.get_parent()):
+		#if type == 'sell' && unit!=null:
+			#unit.queue_free()
 		newUnit.get_parent().empty()
 	unit = newUnit
 	
@@ -85,9 +85,13 @@ func fill(newUnit, emptyUnitsOldSpot = true):
 		get_parent().updateSynergies()
 	if type == 'bench' || type == 'graveyard':
 		unit.resetCurStats()
+		unit.updateInfo()
 	if type == 'sell':
+		
 		Global.player.unitSold(unit)
-		empty(true)
+		unit.die()
+		#empty()
+		
 		
 func finishSwap():
 	

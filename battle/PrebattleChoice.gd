@@ -15,15 +15,15 @@ func _ready():
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func generateChoice(stage):
 	var positiveId = 'coins'
-	var negativeDesc = 'All enemies gain +1 power and +1 armor'
-	var positiveDesc = 'Gain 3 extra coins if you win'
+	var negativeDesc = 'All enemies gain +1 power'
+	var positiveDesc = 'Gain 2 extra coins if you win'
 	
 	$ChoiceLabel.append_bbcode(positiveDesc)
 	$ChoiceLabel.newline()
 	$ChoiceLabel.append_bbcode('BUT')
 	$ChoiceLabel.newline()
 	$ChoiceLabel.append_bbcode(negativeDesc)
-	choiceInfo = {'loot':'coins3'} 
+	choiceInfo = {'loot':'coins2'} 
 
 
 func _on_Accept_pressed():

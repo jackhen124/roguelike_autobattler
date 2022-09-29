@@ -35,21 +35,23 @@ var lastState
 
 var guardingUnit = null
 var waitingForActionClick = false
+var autoActionClick = false
 
 var waitTime = 0
 var afterWaitMethod = ''
 var afterWaitArgs = []
 
 var waitingFor = []
-
+var bodies = []
 
 var playerVictory = false
 
 var lootItems = []
+var lootCollected = 0
 
 var actionStack = []
 
-const roundEndOrder = ['lunar', 'regeneration','individual', 'poison']
+const roundEndOrder = ['lunar', 'regeneration','unitRoundEndAbilities', 'poison']
 var roundEndIndex = 0
 # Called when the node enters the scene tree for the first time.
 func _ready():
@@ -66,7 +68,10 @@ func _ready():
 	victoryAnima.set_visibility_strategy(Anima.VISIBILITY.HIDDEN_AND_TRANSPARENT)
 	
 	
-	
+	if Global.player.autoplay:
+		$CanvasLayer/Autoplay.pressed = true
+	else:
+		$CanvasLayer/Autoplay.pressed = false
 	
 	pass # Replace with function body.
 
@@ -84,8 +89,8 @@ func _process(delta):
 				afterWaitMethod = ''
 				afterWaitArgs = []
 	if state == states.movingTogether:
-		$EnemySpots.global_position = $EnemySpots.global_position.move_toward(allySpots.global_position, delta*100)
-		allySpots.global_position = allySpots.global_position.move_toward($EnemySpots.global_position, delta*100)
+		$EnemySpots.global_position = $EnemySpots.global_position.move_toward(allySpots.global_position, delta*500)
+		allySpots.global_position = allySpots.global_position.move_toward($EnemySpots.global_position, delta*500)
 		if allySpots.global_position.distance_to($EnemySpots.global_position) < 275:
 			nextState()
 	pass
@@ -103,7 +108,8 @@ func render(stageNum):
 	
 	
 	generateEnemies(stageNum)
-	var biomeIndex = (float(stageNum) / float(Global.stagesPerBiome)) -1
+	var biomeIndex = (float(stageNum-1) / float(Global.stagesPerBiome))
+	print('biomeIndex: '+str(biomeIndex))
 	biomeIndex = floor(biomeIndex)
 	var curBiome = Global.biomeOrder[biomeIndex]
 	if Global.elementLibrary.has(curBiome):
@@ -124,6 +130,7 @@ func start(allyUnitArray):
 		connect('mergeStatuses', ally, 'mergeNewStats')
 		
 		ally.setBattleMode(true)
+		
 		ally.updateInfo()
 		
 		
@@ -163,14 +170,53 @@ func onIntroCompleted():
 	$CanvasLayer/PrebattleChoice.generateChoice(Global.player.stageNum)
 	$CanvasLayer/PrebattleChoice.show()
 	Global.player.lineupVertical = true
+	
+func battleText(text):
+	var sep = 24
+	var newDesc = load('res://UI/description.tscn').instance()
+	newDesc.generateDesc(text)
+	get_node('%BattleLog').add_child(newDesc)
+	newDesc.modulate.a = 0
+	newDesc.rect_position.y -= sep
+	for child in get_node('%BattleLog').get_children():
+		var tweenTime = 0.8
+		var tween = child.get_node('Tween')
+		tween.interpolate_property(child, "rect_position:y",
+		child.rect_position.y, child.rect_position.y+sep, tweenTime,
+		Tween.TRANS_LINEAR, Tween.EASE_IN_OUT)
+		if child == newDesc:
+			tween.interpolate_property(child, "modulate:a",
+			0, 1, tweenTime,
+			Tween.TRANS_LINEAR, Tween.EASE_IN_OUT)
+		else:
+			
+			tween.interpolate_property(child, "modulate:a",
+			child.modulate.a, child.modulate.a - 0.17, tweenTime,
+			Tween.TRANS_LINEAR, Tween.EASE_IN_OUT)
+			if child.modulate.a <= 0:
+				child.queue_free()
+		tween.start()
+			
+	
 
 func addToActionStack(type, actionTakers=null,  data = null):
-	
+	if type == 'lunar':
+		var lunarTeams = []
+		if allySpots.allyEffects.has('lunar'):
+			lunarTeams += allies
+		if $EnemySpots.allyEffects.has('lunar'):
+			lunarTeams += enemies
+		if lunarTeams.size() > 0:
+			actionTakers = lunarTeams
+		else:
+			return
+			
 	if type == 'attack':
 		if actionTakers[0].abilities.has('on-attack'):
 			for ability in actionTakers[0].abilities['on-attack']:
-				addToActionStack(self, 'on-attack', ability)
-				print('1adding to actionStack: '+type)
+				addToActionStack('ability',[actionTakers[0]], ability)
+	
+				
 	actionStack.append({'actionTakers':actionTakers, 'type':type, 'data':data})
 
 func nextAction(): 
@@ -179,13 +225,51 @@ func nextAction():
 	
 	if !battleOver:
 		if actionStack.size() > 0:
-			
-			print('ActionStack: '+str(actionStack))
-			for unit in actionStack[0].actionTakers:
-				unit.preAction(actionStack[0].type, actionStack[0].data)
-			#if actionStack[0].type != 'startattack':
-			waitingForActionClick = true
+			var noAction = false
+			print('executing actionStack: '+str(actionStack))
+			if actionStack[0].type == 'moveTurnIndicator':
+				var activeInd
+				var inactiveInd
+				if actionStack[0].actionTakers[0].isAlly: #it actually is ally turn but we changed it already
+					activeInd = $AllyTurnIndicator
+					inactiveInd = $EnemyTurnIndicator
+				else:
+					activeInd = $EnemyTurnIndicator
+					inactiveInd = $AllyTurnIndicator
+					
+				activeInd.modulate.a = 1
+				if state == states.roundEnd:
+					inactiveInd.modulate.a = 0
+				else:
+					inactiveInd.modulate.a = 0.25
+				activeInd.move(actionStack[0].actionTakers[0])
+				activeInd.connect("moveComplete", self, 'nextAction', [], CONNECT_ONESHOT)
+			else:
+				
+				
+				#if action takers is null it is a battle mechanic like regen or poison
+				if actionStack[0].actionTakers == null: 
+					actionStack[0].actionTakers = []
+					for unit in allies + enemies:
+						if unit.curStats[actionStack[0].type] > 0:
+							actionStack[0].actionTakers.append(unit)
+				#actionTakers should be set by this point. 
+				#if not, there is no units that need to do the action
+				for unit in actionStack[0].actionTakers:
+					
+					unit.preAction(actionStack[0].type, actionStack[0].data)
+				
+				if actionStack[0].actionTakers.size() == 0:
+					noAction = true
+			if !noAction:
+				if Global.keywords.has(actionStack[0].type):
+					
+					battleText(Global.keywords[actionStack[0].type].desc)
+				elif actionStack[0].data!= null:
+					battleText(actionStack[0].actionTakers[0].id+ ' '+ actionStack[0].type + ' '+ actionStack[0].data.desc)
 			actionStack.remove(0)
+			if noAction:
+				nextAction()
 			return
 		elif state == states.attack: # add next attacker to actionStack and recurse
 			var nextAttacker
@@ -202,7 +286,7 @@ func nextAction():
 				nextAttacker = getNextAttacker(allies)
 				#print('	next attacker: ',nextAttacker)
 				if nextAttacker != null:
-					print('2adding to actionStack: ')
+					addToActionStack('moveTurnIndicator', [nextAttacker])
 					addToActionStack('startattack',[nextAttacker])
 					
 					allyTurn = false
@@ -219,9 +303,10 @@ func nextAction():
 				nextAttacker = getNextAttacker(enemies)
 				if nextAttacker != null:
 					#print('	calling for enemy action')
-					print('3adding to actionStack: ')
+					addToActionStack('moveTurnIndicator', [nextAttacker])
 					addToActionStack('startattack', [nextAttacker])
 					allyTurn = true
+					nextAction()
 					return
 				else:
 					#print('	all enemies are done...')
@@ -230,12 +315,8 @@ func nextAction():
 					nextAction()
 					return
 		elif state == states.roundEnd:
-			for actionType in roundEndOrder:
-				var curActionUnits = []
-				print('4adding to actionStack: ')
-				addToActionStack(actionType)
-	
-			nextAction()
+			
+			nextState()
 			return
 	else:
 		endBattle()
@@ -244,15 +325,27 @@ func nextAction():
 
 func addWaitingFor(unit):
 	#this is called by unit in preAction, only if the action actually needs to be done
-	waitingFor.append(unit)
-	connect('doPreppedAction', unit, 'doAction', [], CONNECT_ONESHOT)
+	if waitingFor.find(unit)== -1:
+		waitingFor.append(unit)
+	#connect('doPreppedAction', unit, 'doAction', [], CONNECT_ONESHOT)
 	#print('adding action taker: '+unit.id)
 		
 func unitActionDone(unit):
 	waitingFor.erase(unit)
-	#print(unit.id+' done with action! actiontakers left: '+str(actionTakers))
+	print(unit.getName()+' done with action! waitingFor left: '+str(waitingFor))
 	if waitingFor.size() <= 0:
-		nextAction()
+		#nextAction()
+		if Global.player.autoplay:
+			nextAction()
+		elif actionStack.size() > 0:
+			if actionStack[0].type == 'attack':
+				$EnemyTurnIndicator.modulate.a = 0.5
+				$AllyTurnIndicator.modulate.a = 0.5
+				nextAction()
+			else:
+				waitingForActionClick = true
+		else:
+			waitingForActionClick = true
 
 func nextState():
 	print(str('ending battleState: ',states.keys()[state]))
@@ -275,7 +368,16 @@ func nextState():
 		state = states.roundEnd
 		alliesDone = false
 		enemiesDone = false
-		
+		for actionType in roundEndOrder:
+			if actionType == 'unitRoundEndAbilities':
+				for unit in allies + enemies:
+					if unit.abilities.has('round-end'):
+						for ability in unit.abilities['round-end']:
+							addToActionStack('moveTurnIndicator', [unit])
+							addToActionStack('ability', [unit], ability)
+			else:
+				addToActionStack(actionType)
+			
 		nextAction()
 		
 	elif state == states.roundEnd:
@@ -338,12 +440,15 @@ func endBattle():
 	battleOver = true
 	if enemies.size() > 0:
 		$CanvasLayer/VictoryScreen/Label.text = 'defeat'
+		get_node('%ContinueButton').show()
 		lootItems = []
 	showVictoryScreen()
 	$CanvasLayer/RoundLabel.hide()
 	#player.afterBattle()
 	print('battle over')
 	pass
+	
+
 	
 func addAlly(unitId, unitLevel = 1):
 	var newAlly = addUnit($TestAllySpots, unitId, unitLevel)
@@ -429,9 +534,9 @@ func addTeamModifier(isAllied, modifierName, amount = 1):
 
 func _on_PrebattleChoice_choiceMade(choiceInfo):
 	if choiceInfo!= null:
-		addLoot('coins', 3)
+		addLoot('coins', 2)
 		addTeamModifier(false, 'power', 1)
-		addTeamModifier(false, 'armor', 1)
+		#addTeamModifier(false, 'armor', 1)
 		applyTeamModifiers('enemies')
 		
 	nextState()
@@ -454,10 +559,16 @@ func showVictoryScreen():
 			victoryScreen.rect_global_position.y -= sizeDiff/2
 			curButton.render(lootItems[i])
 			curButton.connect('collected', Global.player, 'collectLoot')
-			
-			
+			curButton.connect('collected', self, 'collectLoot')
+	get_node('%BattleLog').hide()
+	Global.player.coinLabel.show()
 	victoryAnima.play()
 	$CanvasLayer/VictoryScreen.show()
+	
+func collectLoot(loot):
+	lootCollected +=1
+	if lootCollected >= lootItems.size():
+		get_node('%ContinueButton').show()
 
 func addLoot(lootName, amount):
 	lootItems.append({'type':lootName, 'amount':amount})
@@ -467,15 +578,30 @@ func _on_ContinueButton_pressed():
 	if enemies.size() > 0:
 		get_tree().reload_current_scene()
 	Global.player.afterBattle()
+	clearBodies()
 	pass # Replace with function body.
+	
+func clearBodies():
+	for body in bodies:
+		body.queue_free()
 
 func _input(event):
-	if event.is_action_pressed("left_click"):
+	if event.is_action_pressed("left_click") || event.is_action_pressed("ui_select"):
 		if waitingForActionClick:
 			print('action click received')
-			emit_signal('doPreppedAction')
 			emit_signal('mergeStatuses')
+			nextAction()
+			#emit_signal('doPreppedAction')
+			
 			waitingForActionClick = false
 			
 			
 	#if even
+
+
+func _on_Autoplay_toggled(button_pressed):
+	if button_pressed:
+		Global.player.autoplay = true
+	else:
+		Global.player.autoplay = false
+	pass # Replace with function body.

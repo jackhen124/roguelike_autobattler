@@ -38,7 +38,9 @@ var targetHeights = null
 var changing = []
 var copyData
 
-var changeSpeed = 8
+var changeSpeed = 1.5
+
+var hasBeenSet = false
 # Called when the node enters the scene tree for the first time.
 func _ready():
 	
@@ -61,7 +63,7 @@ func _process(delta):
 				#curAnimation = 'none'
 	for type in changing:
 		if points[type]['cur']['height'] != points[type]['target']['height']:
-			var speedMult = 0.6
+			var speedMult = 0.55
 			var speed = changeSpeed+ speedMult*CustomFormulas.diff(points[type]['cur']['height'], points[type]['target']['height'])
 			points[type]['cur']['height'] = move_toward(points[type]['cur']['height'], points[type]['target']['height'], delta*speed)
 			
@@ -82,7 +84,9 @@ func copyValues(copy):
 	updateHbWidth(maxHp)
 	
 func setValues(data, maxHp, targetOrCur = 'cur', animation = 'change'):
-	
+	if !hasBeenSet:
+		targetOrCur = 'cur'
+		hasBeenSet = true
 	curAnimation = animation
 	$HpLabel.text = str(data.hp)
 	updateHbWidth(maxHp)
@@ -105,6 +109,7 @@ func setValues(data, maxHp, targetOrCur = 'cur', animation = 'change'):
 	setPoints(targetOrCur)
 	if targetOrCur == 'target':
 		for type in points:
+			
 			if points[type]['target']['height'] != points[type]['cur']['height']:
 				changing.append(type)
 	setColor(float(data.hp) / float(maxHp))

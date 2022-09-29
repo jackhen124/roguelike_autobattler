@@ -116,3 +116,7 @@ func updateSynergies():
 							spot.unit.changeStat('regeneration', curEffectAmount)
 	if name== 'LineupSpots':
 		Global.player.infoPanel.updateSynergies(typeCounts)
+	for spot in get_children():
+		if spot.unit!= null:
+			spot.unit.updateInfo()
+			

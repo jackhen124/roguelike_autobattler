@@ -343,6 +343,7 @@ disToCover = 700
 [node name="Spot3" parent="LineupSpots" instance=ExtResource( 1 )]
 
 [node name="CoinLabel" parent="." instance=ExtResource( 7 )]
+unique_name_in_owner = true
 margin_left = 109.941
 margin_top = 657.0
 margin_right = 109.941

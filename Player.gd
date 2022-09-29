@@ -33,11 +33,13 @@ onready var lineupStartPos = $LineupSpots.global_position
 
 onready var unitInfoPanel = $Front/UnitInfoPanel
 
+var autoplay = false
 # Called when the node enters the scene tree for the first time.
 func _ready():
 	if Global.game.debug:
 		coins = 100
-		addUnit('skunk')
+		var newUnit = addUnit('skunk')
+		newUnit.levelUp()
 		addUnit('skorpion', graveyard)
 	
 	call_deferred('afterReady')
@@ -67,7 +69,7 @@ func _process(delta):
 	if lineupVertical:
 		if $LineupSpots.percentVertical < 1:
 			
-			$LineupSpots.percentVertical = min($LineupSpots.percentVertical + delta*0.55, 100)
+			$LineupSpots.percentVertical = min($LineupSpots.percentVertical + delta*2, 100)
 			
 			$LineupSpots.updatePositions()
 			if is_instance_valid(battle):
@@ -84,7 +86,7 @@ func _process(delta):
 	else:
 		if $LineupSpots.percentVertical > 0:
 			#battle.modulate.a = $LineupSpots.percentVertical
-			$LineupSpots.percentVertical = max($LineupSpots.percentVertical - delta*0.7, 0)
+			$LineupSpots.percentVertical = max($LineupSpots.percentVertical - delta*2, 0)
 			$LineupSpots.updatePositions()
 			$LineupSpots.global_position.y = CustomFormulas.proportion(lineupStartPos.y, battle.get_node('AlliesPos').global_position.y, $LineupSpots.percentVertical)
 			$LineupSpots.global_position.x = CustomFormulas.proportion(lineupStartPos.x, battle.get_node('AlliesPos').global_position.x, $LineupSpots.percentVertical)
@@ -103,19 +105,20 @@ func afterBattle():
 		initializeBattle()
 		gui.show()
 	stageNum +=1
+	
 	lineupVertical = false
-	#var anima = Anima.begin($LeaveScreen)
-	#anima.then({property = 'y',to = -offscreenDis, duration = 1.5, relative = true})
+	
 	for spot in lineupSpots.get_children():
 		spot.render('lineup')
 	#anima.play()
+	lineupSpots.updateSynergies()
 	#var anima = Anima.begin($Front/GUI)
 	#anima.then({property = 'y', to = offscreenDis, duration = 1.5, relative = true})
 	#anima.play()
-	
+	$Front.show()
 	coinLabel.show()
 	benchSpots.show()
-	
+	get_node('%SellSpot').show()
 	$Front/EndPreviewButton.hide()
 	store.refresh()
 	$LeaveScreen.modulate.a = 1
@@ -156,6 +159,8 @@ func clearGraveyard():
 	
 func nextBattle():
 	$Front/EndPreviewButton.hide()
+	get_node('%SellSpot').hide()
+	get_node('%CoinLabel').hide()
 	battling = true
 	gui.hide()
 	benchSpots.hide()
@@ -214,33 +219,30 @@ func updateInfo():
 		$Front/GUI/RerollButton/CoinLabel.setCoins('Free')
 
 	coinLabel.setCoins(coins)
+
+func checkMerge(mergeUnit):
+	var count = 0
+	var maxHpPercent = 0
+	var unitsToMerge = []
+	var keepUnit = mergeUnit
+	for unit in getOwnedUnits():
+		if unit.id == mergeUnit.id && unit.level == mergeUnit.level:
+			count += 1
+			unitsToMerge.append(unit)
+			var hpPercent = unit.curStats.hp
+			if hpPercent > maxHpPercent:
+				keepUnit = unit
+
+	if count >= 3:
+		for un in unitsToMerge:
+			if un != keepUnit:
+				un.get_parent().empty(true)
+		getFirstEmptySpot().fill(keepUnit)
+		keepUnit.levelUp()
+		
 	
-func canMerge(checkUnit):
-	var numOthers = 0
-	for otherUnit in getOwnedUnits():
-		if otherUnit != checkUnit:
-			
-			if otherUnit.level == checkUnit.level && otherUnit.id == checkUnit.id:
-				numOthers +=1
-				if numOthers >= 2:
-					return true
-	return false
-	
-func merge(checkUnit):
-	var hpMissing = checkUnit.baseStats.maxHp
-	for otherUnit in getOwnedUnits():
-		if otherUnit != checkUnit:
-			
-			if otherUnit.level == checkUnit.level && otherUnit.id == checkUnit.id:
-				hpMissing+=otherUnit.baseStats.maxHp - otherUnit.curStats.hp
-				otherUnit.get_parent().empty(true)
-	
-	checkUnit.levelUp(true, hpMissing)
-	if checkUnit.curStats.hp > checkUnit.curStats.maxHp:
-		checkUnit.curStats.hp = checkUnit.curStats.maxHp
-	if checkUnit.level == 2:
-		if canMerge(checkUnit):
-			merge(checkUnit)
+
+
 	
 func getLineupUnits():
 	var lineup = []
@@ -267,10 +269,9 @@ func buyUnit(unit):
 		
 		coins-= Global.unitLibrary[unit.id].tier
 		
-		if canMerge(unit):
-			merge(unit)
-		getFirstEmptySpot().fill(unit)
 		
+		getFirstEmptySpot().fill(unit)
+		checkMerge(unit)
 		if rerollCost == 0:
 			rerollCost +=1
 		updateInfo()
@@ -278,13 +279,13 @@ func buyUnit(unit):
 
 func addUnit(unitName, group = null):
 	var unit = Global.instanceUnit(unitName)
-	if canMerge(unit):
-		merge(unit)
+	checkMerge(unit)
 	if group == graveyard:
 		unitDie(unit)
 		pass
 	else:
 		getFirstEmptySpot().fill(unit)
+	return unit
 
 func getFirstEmptySpot():
 	for spot in lineupSpots.get_children():
@@ -336,5 +337,6 @@ func _on_EndPreviewButton_pressed():
 func _on_GraveyardButton_pressed():
 	graveyard.hide()
 	gui.show()
+	store.show()
 	initializeBattle()
 	pass # Replace with function body.

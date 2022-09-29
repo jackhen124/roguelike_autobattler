@@ -12,6 +12,7 @@ onready var tween = $Tween
 var time = 0.9
 var tweenTrans = Tween.TRANS_QUAD
 var curAmount = 0
+var color
 # Called when the node enters the scene tree for the first time.
 func _ready():
 	
@@ -41,12 +42,21 @@ func render(statusName, amount, isChange):
 	else:
 		label.text += str(amount) + ' '
 		label.text += text
+	if amount < 0 && statusName == 'hp':
+		label.text = str(abs(amount))+' dmg'
+		#modulate = Color(Color(0.8, 0.1,0.1))
+		
+	
 		
 	#print('rendering label: '+label.text)	
 	if Global.keywords[statusName].has('color'):
-		modulate = Color(Global.keywords[statusName].color)#.lightened(0.2)
+		color = Color(Global.keywords[statusName].color)#.lightened(0.2)
 	elif Global.elementLibrary[statusName].has('color'):
-		modulate = Color(Global.elementLibrary[statusName].color)#.lightened(0.2)
+		color = Color(Global.elementLibrary[statusName].color)#.lightened(0.2)
+	if amount < 0:
+		color = color.contrasted()
+	$Movable.get_node("Panel").modulate = color
+	$Movable.get_node("Label").add_color_override("font_color", color.lightened(0.2))
 	
 	if isChange:
 		tween = $Tween

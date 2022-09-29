@@ -9,6 +9,5 @@ anchor_bottom = 1.0
 margin_right = -2.0
 margin_bottom = -4.0
 script = ExtResource( 2 )
-debug = true
 
 [node name="StartMenu" parent="." instance=ExtResource( 1 )]

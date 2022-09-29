@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=2]
+[gd_scene load_steps=18 format=2]
 
 [ext_resource path="res://battle/Battle.gd" type="Script" id=1]
 [ext_resource path="res://spot_group.gd" type="Script" id=2]
@@ -10,7 +10,9 @@
 [ext_resource path="res://resources/theme/victory_theme.tres" type="Theme" id=8]
 [ext_resource path="res://resources/fonts/Comfortaa-VariableFont_wght.ttf" type="DynamicFontData" id=9]
 [ext_resource path="res://UI/CollectButton.tscn" type="PackedScene" id=10]
+[ext_resource path="res://battle/turn_indicator.gd" type="Script" id=11]
 [ext_resource path="res://battle/PrebattleChoice.gd" type="Script" id=12]
+[ext_resource path="res://resources/spot.png" type="Texture" id=13]
 
 [sub_resource type="DynamicFont" id=1]
 size = 90
@@ -39,7 +41,7 @@ font_data = ExtResource( 9 )
 position = Vector2( -1, -2 )
 z_index = -1
 script = ExtResource( 1 )
-debugEnemy = "skorpion"
+debugEnemy = "eagle"
 debugEnemyCount = 2
 
 [node name="Scenery" type="Node2D" parent="."]
@@ -83,6 +85,20 @@ position = Vector2( 311, 382 )
 
 [node name="Tween" type="Tween" parent="."]
 
+[node name="EnemyTurnIndicator" type="Sprite" parent="."]
+visible = false
+position = Vector2( 1059, 398 )
+scale = Vector2( 0.4, 0.4 )
+texture = ExtResource( 13 )
+script = ExtResource( 11 )
+
+[node name="AllyTurnIndicator" type="Sprite" parent="."]
+visible = false
+position = Vector2( 198, 385 )
+scale = Vector2( 0.4, 0.4 )
+texture = ExtResource( 13 )
+script = ExtResource( 11 )
+
 [node name="EnemySpots" type="Node2D" parent="."]
 position = Vector2( 629, 190 )
 script = ExtResource( 2 )
@@ -100,6 +116,22 @@ zoom = Vector2( 1.2, 1.2 )
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 layer = 0
 
+[node name="Panel" type="Panel" parent="CanvasLayer"]
+self_modulate = Color( 1, 1, 1, 0.607843 )
+margin_left = -80.0
+margin_top = 562.0
+margin_right = 1375.0
+margin_bottom = 738.0
+mouse_filter = 2
+
+[node name="BattleLog" type="Control" parent="CanvasLayer"]
+unique_name_in_owner = true
+margin_left = 191.0
+margin_top = 577.0
+margin_right = 1444.0
+margin_bottom = 682.0
+mouse_filter = 2
+
 [node name="Intro" type="Label" parent="CanvasLayer"]
 margin_left = 2.0
 margin_top = 155.0
@@ -108,9 +140,6 @@ margin_bottom = 257.0
 custom_fonts/font = SubResource( 1 )
 text = "Pushover Prairie"
 align = 1
-__meta__ = {
-"_edit_use_anchors_": false
-}
 
 [node name="Intro2" type="Label" parent="CanvasLayer/Intro"]
 margin_left = -2.0
@@ -143,6 +172,8 @@ __meta__ = {
 }
 
 [node name="ContinueButton" type="Button" parent="CanvasLayer/VictoryScreen"]
+unique_name_in_owner = true
+visible = false
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -164,9 +195,6 @@ margin_top = 146.0
 margin_right = 2.0
 margin_bottom = 4.0
 mouse_filter = 2
-__meta__ = {
-"_edit_use_anchors_": false
-}
 
 [node name="CollectButton1" parent="CanvasLayer/VictoryScreen/VBoxContainer" instance=ExtResource( 10 )]
 anchor_top = 0.0
@@ -201,10 +229,10 @@ margin_right = 425.0
 margin_bottom = 332.0
 
 [node name="PrebattleChoice" type="Panel" parent="CanvasLayer"]
-margin_left = 431.0
-margin_top = 151.0
-margin_right = 822.0
-margin_bottom = 612.0
+margin_left = 456.0
+margin_top = 60.0
+margin_right = 847.0
+margin_bottom = 521.0
 theme = ExtResource( 8 )
 script = ExtResource( 12 )
 
@@ -244,7 +272,19 @@ __meta__ = {
 "_edit_use_anchors_": false
 }
 
+[node name="Autoplay" type="CheckButton" parent="CanvasLayer"]
+margin_left = 1140.0
+margin_top = 572.0
+margin_right = 1248.0
+margin_bottom = 643.0
+text = "auto battle"
+
+[node name="Next" type="Button" parent="CanvasLayer"]
+margin_right = 12.0
+margin_bottom = 20.0
+
 [connection signal="pressed" from="CanvasLayer/VictoryScreen/ContinueButton" to="." method="_on_ContinueButton_pressed"]
 [connection signal="choiceMade" from="CanvasLayer/PrebattleChoice" to="." method="_on_PrebattleChoice_choiceMade"]
 [connection signal="pressed" from="CanvasLayer/PrebattleChoice/Accept" to="CanvasLayer/PrebattleChoice" method="_on_Accept_pressed"]
 [connection signal="pressed" from="CanvasLayer/PrebattleChoice/Decline" to="CanvasLayer/PrebattleChoice" method="_on_Decline_pressed"]
+[connection signal="toggled" from="CanvasLayer/Autoplay" to="." method="_on_Autoplay_toggled"]

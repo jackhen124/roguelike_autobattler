@@ -10,7 +10,7 @@ var spotScene = preload("res://Spot.tscn")
 var unitScene = preload("res://units/Unit.tscn")
 var player
 var game
-var stagesPerBiome = 1
+var stagesPerBiome = 2
 var timer = Timer.new()
 
 var tieredLibrary = []
@@ -20,6 +20,7 @@ var avgStats = {'power':1, 'hp': 1}
 var onScreenUnits = []
 var biomeOrder = []
 var possibleStats = []
+var allUnitsUsedStage
 const keywords = {
 	'hp':{
 		
@@ -57,7 +58,7 @@ const keywords = {
 	},
 	'regeneration':{
 		
-		'desc': "round-end: heal 1 per regenration",
+		'desc': "round-end: heal 1 per regeneration",
 		'color':'#27e496',
 		'type':'stat',
 		'abrev':'regen'
@@ -66,6 +67,11 @@ const keywords = {
 		
 		'desc': "50% increased chance of being targeted by enemy attacks, per stack of taunt",
 		'color':'#f19220',
+		'type':'stat'
+	},
+	'weaken':{
+		'desc': "reduce power. if power would go below 1, take damage instead",
+		'color':'#ffe552',
 		'type':'stat'
 	},
 	'slow':{
@@ -150,6 +156,13 @@ const elementLibrary = {
 	},
 	
 }
+#ABILITY KEYWORDS
+# stat: what stat is being changed ( poison, armor, hp, power)
+# target: what unit is being affected ( guarding, attacking, randomEnemy, randomAlly)
+# scaling: what is the value at each level ( [1,2,4] )
+# scalingType: how does scaling effect the ability (amount, triggers)
+#
+#
 const unitLibrary = {
 	##################### Tier 1 ###########################
 		'skunk':{
@@ -157,16 +170,22 @@ const unitLibrary = {
 		'tier':1,
 		'baseStats' : {'power':3, 'maxHp':8},
 		'types':['toxic','floral'],
-		'desc':'round-end: apply 1 poison to target. on-guard apply 1 poison to attacker',
-		'abilities': {'round-end':[{'stat':'poison', 'amount': [1,2,4], 'target':'randomEnemy'}]}
+		'desc':'round-end: apply 1 poison to a random enemy scaling times',
+		'abilities': {
+			'round-end':[
+				{'desc':'apply 1 poison to a random enemy','stat':'poison', 'triggers': [1,2,4], 'amount':1,'target':'randomEnemy'}
+			]}
 		},
 		'skorpion':{
 		
 		'tier':1,
 		'baseStats' : {'power':2, 'maxHp':6, 'armor':1},
 		'types':['toxic', 'earthen'],
-		'desc':"on-attack: apply 1 poison to target",
-		'abilities': {'on-attack':[{'stat':'poison', 'amount': [1,2,4], 'target':'guarding'}]}
+		'desc':"",
+		'abilities': {
+			'on-attack':[
+				{'desc':'apply 1 poison to target','stat':'poison', 'triggers': [1,2,4], 'amount':1, 'target':'guarding'}
+			]}
 		},
 		
 		'snail':{
@@ -190,11 +209,15 @@ const unitLibrary = {
 	##################### Tier 2 ###########################
 		'eagle':{
 		'baseStats' : {'power':5, 'maxHp':9},
-		'tier':2,
+		'tier':1,
 		
 		'types':['solar','lunar'],
-		'desc':'round-end: lose [1,2,4] power. if my attack would be less than 1, lose health instead',
-		'abilities': {}
+		'desc':'',
+		'abilities': {
+			'round-end':[
+				{'desc':'round-end: weaken by 1','stat':'power', 'triggers': [1,2,4], 'amount':-1, 'target':'self'}
+			]}
+		
 		},
 		'penguin':{
 		
@@ -279,11 +302,13 @@ func _ready():
 		tieredLibrary.append(curTierArray)
 		
 	
+	allUnitsUsedStage = stagesPerBiome*(biomeOrder.size()-1)
+	print('ALL UNITS USED AT STAGE: '+str(allUnitsUsedStage))
+	for i in range(allUnitsUsedStage):
 		
-	for i in range(16):
+		var pu = getPossibleUnitsBasedOnStage(i+1)
+		print(pu.size(), ' possible units at stage ',i+1,':',pu)
 		pass
-		#var pu = getPossibleUnitsBasedOnStage(i+1)
-		#print(pu.size(), ' possible units at stage ',i+1,':',pu)
 	pass # Replace with function body.
 
 
@@ -295,6 +320,7 @@ func generateBiomeOrder():
 	
 	biomeOrder = shuffleArray(possibleBiomes)
 	biomeOrder.insert(0,'neutral')
+	print('BIOME ORDER: '+str(biomeOrder))
 		
 
 func addSpot(parentNode):
@@ -304,6 +330,7 @@ func addSpot(parentNode):
 	
 func randomUnitBasedOn(stage):
 	var possibleUnits = getPossibleUnitsBasedOnStage(stage)
+	
 	var rand = rng.randi_range(0,possibleUnits.size()-1)
 	
 	return possibleUnits[rand]
@@ -339,12 +366,14 @@ func updateAverageStats(array2d):
 	
 func getPossibleUnitsBasedOnStage(stage):
 	#print('GETTING UNIT BASED ON STAGE: ',stage)
-	var allUnitsUsedStage = 6
+	
 	
 	var minPercentUsed = float(tieredLibrary[0].size()) / float(unitLibrary.size())
+	#print('minPercentUsed: '+str(minPercentUsed))
 	var prop = min(float(stage-1) / float(allUnitsUsedStage-1),1)#subtract 1 because we want prop at 0 when stage is 1
 	
 	var percentOfTotalLibToUse = CustomFormulas.proportion(minPercentUsed, 1, prop)
+	
 	#print('percentOfTotalLibToUse = ', percentOfTotalLibToUse)
 	var libsFullyUsed = 0
 	
@@ -363,15 +392,22 @@ func getPossibleUnitsBasedOnStage(stage):
 			var percentOfTotalLibraryMissingFromPartialLib = percentOfTotalLibToUse - percentIsAtLeastTier(curTier)
 			#print('	percent of total lib missing from partial lib: ', percentOfTotalLibraryMissingFromPartialLib)
 			var numberFromPartialLib = unitLibrary.size() * percentOfTotalLibraryMissingFromPartialLib
-			percentOfPartialTier = 1+float(numberFromPartialLib)/ float(tieredLibrary[i].size())
+			percentOfPartialTier = float(1+float(numberFromPartialLib)/ float(tieredLibrary[i].size()))
 			
 			#print('	using ',percentOfPartialTier*100,'% of tier ',curTier)
 			break
-		
+	
 	var possibleUnits = []
+	
 	for i in range(libsFullyUsed):
+
 		possibleUnits.append_array(tieredLibrary[i])
-	if libsFullyUsed == 4 || percentOfPartialTier == 0:
+	
+	
+	#print('	percentOfPartialTier: '+str(percentOfPartialTier))
+	
+	
+	if libsFullyUsed == 4 || percentOfPartialTier <= 0.05:
 		#print('	stage ',stage,' using ',possibleUnits.size(),' / ', unitLibrary.size())
 		return possibleUnits
 	var partialLib = shuffleArray(tieredLibrary[libsFullyUsed])
